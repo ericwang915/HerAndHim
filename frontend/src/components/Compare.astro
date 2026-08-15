@@ -1,0 +1,66 @@
+---
+const rows = [
+  { label: 'Self-hosted, your data', us: '✅', replika: '❌', nomi: '❌', cai: '❌' },
+  { label: 'Your own API keys / model', us: '✅ any', replika: '❌', nomi: '❌', cai: '❌' },
+  { label: 'Runs on Telegram', us: '✅', replika: '❌', nomi: '❌', cai: '❌' },
+  { label: 'AI selfies, consistent face', us: '✅', replika: '💰', nomi: '✅', cai: '❌' },
+  { label: 'Lives a daily life (city / weather)', us: '✅', replika: '❌', nomi: '❌', cai: '❌' },
+  { label: 'Open source', us: '✅ AGPL', replika: '❌', nomi: '❌', cai: '❌' },
+  { label: 'Price', us: 'free', replika: '$20/mo', nomi: '$16/mo', cai: '$10/mo', strong: true },
+];
+---
+<section id="compare" class="compare">
+  <div class="container">
+    <p class="eyebrow-plain">vs. the hosted apps</p>
+    <h2 class="compare__head">
+      The subscription apps rent you a companion.<br /><span class="it grad">This one you own.</span>
+    </h2>
+
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr>
+            <th class="lead"></th>
+            <th class="us">HerAndHim</th>
+            <th>Replika</th>
+            <th>Nomi</th>
+            <th>Character.AI</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r) => (
+            <tr>
+              <td class="lead">{r.label}</td>
+              <td class={r.strong ? 'us strong' : 'us'}>{r.us}</td>
+              <td>{r.replika}</td>
+              <td>{r.nomi}</td>
+              <td>{r.cai}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+    <p class="compare__note">
+      Competitor pricing as advertised at the time of writing. “Free” means the software costs nothing —
+      you still pay your model provider for the tokens you use, or nothing at all if you run a local model.
+    </p>
+  </div>
+</section>
+
+<style>
+  .eyebrow-plain { font-size: 0.78rem; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; color: var(--text-muted); margin: 0 0 16px; }
+  .compare__head { font-size: clamp(1.8rem, 3.6vw, 2.7rem); color: #fff; margin-bottom: 44px; }
+  .tablewrap {
+    overflow-x: auto; border: 1px solid var(--border);
+    border-radius: var(--radius); background: var(--surface);
+  }
+  table { width: 100%; border-collapse: collapse; min-width: 620px; }
+  th, td { padding: 15px 18px; text-align: center; font-size: 0.94rem; color: var(--text-soft); }
+  thead th { font-weight: 600; color: var(--text); border-bottom: 1px solid var(--border-strong); }
+  thead th.us { color: var(--accent); }
+  tbody tr + tr td { border-top: 1px solid var(--border); }
+  .lead { text-align: left; color: var(--text); }
+  td.us { color: var(--text); background: rgba(243,160,182,0.06); }
+  td.strong { font-weight: 700; color: #fff; }
+  .compare__note { margin: 18px 0 0; font-size: 0.8rem; color: var(--text-muted); max-width: 720px; }
+</style>

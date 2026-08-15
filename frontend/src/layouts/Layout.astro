@@ -1,0 +1,82 @@
+---
+import '../styles/global.css';
+
+interface Props {
+  title?: string;
+  description?: string;
+}
+
+const {
+  title = 'HerAndHim — a self-hosted AI companion with a life of her own',
+  description =
+    'Open-source AI companion you run yourself. She keeps a real daily schedule in a real city, remembers what matters, texts like a person, and takes selfies that always look like the same person. Your keys, your data, your machine.',
+} = Astro.props;
+
+const ogImage = new URL('/social-preview.png', Astro.site ?? 'https://herandhim.ai').href;
+---
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <meta name="description" content={description} />
+    <link rel="canonical" href={new URL(Astro.url.pathname, Astro.site ?? 'https://herandhim.ai').href} />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:image" content={ogImage} />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={ogImage} />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400;1,9..144,500&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap"
+    />
+
+    <title>{title}</title>
+  </head>
+  <body>
+    <slot />
+
+    <script>
+      // Live star count for every `[data-stars]` slot. Unauthenticated GitHub API,
+      // so it's rate-limited and best-effort — the static ★ stays if it fails.
+      (async () => {
+        const slots = document.querySelectorAll<HTMLElement>('[data-stars]');
+        if (!slots.length) return;
+        try {
+          const res = await fetch('https://api.github.com/repos/ericwang915/HerAndHim');
+          if (!res.ok) return;
+          const { stargazers_count: n } = await res.json();
+          if (typeof n !== 'number') return;
+          const label = n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n);
+          slots.forEach((el) => (el.textContent = label));
+        } catch {
+          /* offline or rate-limited — leave the fallback in place */
+        }
+      })();
+
+      // Every `button.copy` on the page copies its data-copy payload.
+      document.querySelectorAll<HTMLButtonElement>('button.copy').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          try {
+            await navigator.clipboard.writeText(btn.dataset.copy ?? '');
+            const original = btn.textContent;
+            btn.textContent = 'Copied';
+            setTimeout(() => (btn.textContent = original), 1600);
+          } catch {
+            /* clipboard blocked — the command is right there to select */
+          }
+        });
+      });
+    </script>
+  </body>
+</html>

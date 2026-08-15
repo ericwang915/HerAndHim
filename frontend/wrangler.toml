@@ -1,0 +1,6 @@
+# Cloudflare Pages project. The project keeps its original name (`clawsoul`)
+# because herandhim.ai / www.herandhim.ai are already attached to it —
+# Pages projects cannot be renamed without moving the custom domains.
+name = "clawsoul"
+compatibility_date = "2026-05-01"
+pages_build_output_dir = "./dist"

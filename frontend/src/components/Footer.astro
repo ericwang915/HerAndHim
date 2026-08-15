@@ -1,0 +1,37 @@
+---
+const year = new Date().getFullYear();
+const repo = 'https://github.com/ericwang915/HerAndHim';
+---
+<footer class="footer">
+  <div class="container footer__inner">
+    <a href="/" class="footer__brand">her<span class="amp">&amp;</span>him</a>
+    <div class="footer__links">
+      <a href={repo} target="_blank" rel="noopener">GitHub</a>
+      <a href="https://pypi.org/project/herandhim/" target="_blank" rel="noopener">PyPI</a>
+      <a href={`${repo}/blob/main/SAFETY.md`} target="_blank" rel="noopener">SAFETY.md</a>
+      <a href="/safety">Safety</a>
+      <a href={`${repo}/issues`} target="_blank" rel="noopener">Issues</a>
+      <a href={`${repo}/blob/main/LICENSE`} target="_blank" rel="noopener">AGPL-3.0</a>
+    </div>
+    <div class="footer__copy">© {year} her &amp; him</div>
+  </div>
+  <div class="container">
+    <p class="footer__note">
+      For adults 18+. her &amp; him is self-hosted software for entertainment and companionship — not a
+      medical, mental-health, therapy, or crisis service, and not a substitute for professional care or
+      human relationships. You run it, so you are responsible for how you use it and for the model
+      providers you point it at. This site collects nothing: no accounts, no cookies, no analytics.
+    </p>
+  </div>
+</footer>
+
+<style>
+  .footer { padding: 36px 0; border-top: 1px solid var(--border); }
+  .footer__inner { display: flex; align-items: center; justify-content: space-between; gap: 18px; flex-wrap: wrap; }
+  .footer__brand { font-family: var(--serif); font-size: 1.2rem; color: #fff; }
+  .footer__brand .amp { font-style: italic; color: var(--accent); padding: 0 3px; }
+  .footer__links { display: flex; gap: 22px; flex-wrap: wrap; justify-content: center; font-size: 0.9rem; color: var(--text-soft); }
+  .footer__copy { font-size: 0.85rem; color: var(--text-muted); }
+  .footer__note { margin: 18px 0 0; font-size: 0.76rem; line-height: 1.55; color: var(--text-muted); max-width: 760px; }
+  @media (max-width: 640px) { .footer__inner { justify-content: center; text-align: center; } .footer__note { text-align: center; margin-left: auto; margin-right: auto; } }
+</style>

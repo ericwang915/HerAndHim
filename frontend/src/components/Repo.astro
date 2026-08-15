@@ -1,0 +1,150 @@
+---
+import GhIcon from './GhIcon.astro';
+
+const repo = 'https://github.com/ericwang915/HerAndHim';
+
+const parts = [
+  { path: 'core/agent.py', label: 'The reasoning loop', body: 'Context compaction, tool dispatch, and a three-tier skill loader the model can extend by writing its own skills.' },
+  { path: 'core/memory/', label: 'Memory', body: 'Markdown long-term memory, an emotional graph, milestones and a temporal index — plus BM25 + dense retrieval with RRF and an LLM reranker.' },
+  { path: 'core/image_gen/', label: 'Selfie pipeline', body: '13 image backends behind one interface — hosted APIs, keyless options, or your own ComfyUI — with a canonical face reference for identity consistency.' },
+  { path: 'scheduler/', label: 'Her daily life', body: 'A planner that writes her 24-hour schedule, proactive sentiment-aware messages, scheduled selfies, cron and a heartbeat monitor.' },
+  { path: 'channels/telegram_bot.py', label: 'Telegram', body: 'Streaming replies, voice notes in (Deepgram STT), photos both ways, reactions and typing rhythm.' },
+  { path: 'web/', label: 'Dashboard', body: 'FastAPI + WebSocket chat at localhost:7788 — design the persona, watch her day, browse memories and photos.' },
+];
+
+const cli = [
+  ['herandhim onboard', 'Interactive setup wizard — 4 questions'],
+  ['herandhim start', 'Start the daemon (web + Telegram)'],
+  ['herandhim chat', 'Interactive terminal chat'],
+  ['herandhim status / stop', 'Daemon lifecycle'],
+];
+
+const clone = 'git clone https://github.com/ericwang915/HerAndHim.git\ncd HerAndHim\npip install -e .\npytest tests/ -v';
+---
+<section id="repo" class="repo">
+  <div class="container">
+    <p class="eyebrow-plain">What's in the repo</p>
+    <h2 class="repo__head">
+      A Python package, not a product.<br /><span class="it grad">Read every line of her.</span>
+    </h2>
+    <p class="repo__lede">
+      HerAndHim is 78 Python modules under AGPL-3.0: an agent loop, a memory system, a scheduler
+      that gives her a day, an image pipeline that keeps her face consistent, and a FastAPI dashboard —
+      all running as one process on your own machine. 250+ tests, CI on every push, no hosted backend
+      anywhere in the design.
+    </p>
+
+    <div class="repo__grid">
+      <div class="parts">
+        {parts.map((p) => (
+          <div class="part">
+            <code class="part__path">{p.path}</code>
+            <div>
+              <h3>{p.label}</h3>
+              <p>{p.body}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div class="repo__side">
+        <div class="tree">
+          <div class="tree__head">herandhim/</div>
+          <pre><code>{`├── main.py            # CLI entry point
+├── onboard.py         # setup wizard
+├── daemon.py          # process manager
+├── server.py          # Telegram + scheduler
+├── core/
+│   ├── agent.py       # reasoning loop
+│   ├── llm/           # 16 providers
+│   ├── memory/        # emotional graph
+│   ├── retrieval/     # BM25 + dense + RRF
+│   └── image_gen/     # 13 backends
+├── channels/          # Telegram bot
+├── scheduler/         # her 24h plan
+├── web/               # FastAPI dashboard
+└── templates/         # personas & skills`}</code></pre>
+        </div>
+
+        <div class="cli">
+          <div class="cli__head">CLI</div>
+          {cli.map(([cmd, desc]) => (
+            <div class="cli__row">
+              <code>{cmd}</code>
+              <span>{desc}</span>
+            </div>
+          ))}
+        </div>
+
+        <div class="clone">
+          <div class="clone__head">
+            <span>Hack on it</span>
+            <button class="copy" data-copy={clone} type="button" aria-label="Copy the clone commands">Copy</button>
+          </div>
+          <pre><code>{clone}</code></pre>
+          <a class="clone__link" href={repo} target="_blank" rel="noopener">
+            <GhIcon size={14} /> Read the source on GitHub →
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .eyebrow-plain { font-size: 0.78rem; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; color: var(--text-muted); margin: 0 0 16px; }
+  .repo__head { font-size: clamp(1.8rem, 3.6vw, 2.7rem); color: #fff; margin-bottom: 16px; }
+  .repo__lede { max-width: 720px; margin: 0 0 48px; color: var(--text-soft); }
+
+  .repo__grid { display: grid; grid-template-columns: 1fr 380px; gap: 26px; align-items: start; }
+  .parts { display: flex; flex-direction: column; gap: 14px; }
+  .part {
+    display: flex; gap: 18px; align-items: flex-start;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 20px 22px;
+  }
+  .part__path {
+    flex-shrink: 0; width: 168px; font-family: var(--mono); font-size: 0.76rem;
+    color: var(--accent); padding-top: 3px; word-break: break-all;
+  }
+  .part h3 { font-size: 1.02rem; color: #fff; margin: 0 0 6px; }
+  .part p { margin: 0; font-size: 0.92rem; color: var(--text-soft); }
+
+  .repo__side { display: flex; flex-direction: column; gap: 18px; position: sticky; top: 90px; }
+  .tree, .cli, .clone {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .tree__head, .cli__head, .clone__head {
+    padding: 12px 18px; font-family: var(--mono); font-size: 0.78rem; color: var(--text);
+    background: rgba(255,255,255,0.035); border-bottom: 1px solid var(--border);
+  }
+  .clone__head { display: flex; align-items: center; justify-content: space-between; font-family: inherit; font-weight: 600; }
+  .tree pre, .clone pre { margin: 0; padding: 16px 18px; overflow-x: auto; }
+  .tree code, .clone code { font-family: var(--mono); font-size: 0.72rem; line-height: 1.75; color: var(--text-soft); white-space: pre; }
+  .cli__row {
+    display: flex; flex-direction: column; gap: 3px;
+    padding: 11px 18px; border-bottom: 1px solid var(--border);
+  }
+  .cli__row:last-child { border-bottom: 0; }
+  .cli__row code { font-family: var(--mono); font-size: 0.78rem; color: var(--accent); }
+  .cli__row span { font-size: 0.82rem; color: var(--text-muted); }
+  .copy {
+    font-family: inherit; font-size: 0.72rem; font-weight: 600; color: var(--text);
+    background: var(--surface-strong); border: 1px solid var(--border-strong);
+    border-radius: 8px; padding: 4px 10px; cursor: pointer;
+  }
+  .copy:hover { border-color: rgba(255,255,255,0.28); }
+  .clone__link {
+    display: flex; align-items: center; gap: 8px;
+    padding: 13px 18px; border-top: 1px solid var(--border);
+    font-size: 0.86rem; color: var(--accent);
+  }
+
+  @media (max-width: 1000px) {
+    .repo__grid { grid-template-columns: 1fr; }
+    .repo__side { position: static; }
+    .part { flex-direction: column; gap: 8px; }
+    .part__path { width: auto; }
+  }
+</style>
