@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 import pathlib
+import re
 
 import pytest
 
@@ -92,12 +93,31 @@ def test_dashboard_ships_no_pricing_or_account_ui():
 
 def test_nothing_in_the_app_calls_a_third_party_at_runtime():
     """A 'zero cloud' install must not phone home. The deleted login page
-    pulled supabase-js from a CDN — the only such call in the product."""
+    pulled supabase-js from a CDN; the dashboard pulled Tailwind's runtime
+    from cdn.tailwindcss.com — and with that host blocked, every colour on
+    the page vanished and the config screen was black on black (#41)."""
     for path in (ROOT / "herandhim/web/static").rglob("*.html"):
         html = path.read_text()
         for cdn in ("cdn.jsdelivr.net", "unpkg.com", "fonts.googleapis.com",
-                    "herandhim.ai"):
+                    "cdn.tailwindcss.com", "herandhim.ai"):
             assert cdn not in html, f"{path.name} loads {cdn}"
+        # Not just the hosts we know about: no script or stylesheet may be
+        # fetched from anywhere but this process.
+        for m in re.finditer(r'<(script|link)\b[^>]*\b(src|href)="([^"]+)"', html):
+            url = m.group(3)
+            assert not re.match(r"^(https?:)?//", url), f"{path.name} loads {url}"
+
+
+def test_dashboard_is_readable_without_its_stylesheet_runtime():
+    """The Tailwind runtime is served from /static, and even if it never runs
+    the base CSS keeps text and form controls light on the dark background."""
+    html = (ROOT / "herandhim/web/static/index.html").read_text()
+    assert (ROOT / "herandhim/web/static/vendor/tailwind-3.4.17.js").is_file()
+    assert 'src="/static/vendor/tailwind-3.4.17.js"' in html
+    assert '<meta name="color-scheme" content="dark">' in html
+    assert "color-scheme: dark" in html
+    assert re.search(r"\bbody \{ color: #[0-9a-f]{6}; \}", html)
+    assert re.search(r"option, optgroup \{[^}]*color: #f0e7ea", html)
 
 
 def test_the_dead_login_page_is_gone():
