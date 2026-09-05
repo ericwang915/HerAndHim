@@ -1,0 +1,59 @@
+---
+const shots = [
+  {
+    image: '/demo/proactive-and-sass.jpg',
+    alt: 'Telegram chat where she messages first and teases you back',
+    title: 'She texts first',
+    body: 'Bursts of short messages, a nudge when you’ve been quiet, and enough attitude to push back when you deserve it.',
+  },
+  {
+    image: '/demo/sees-your-photo.jpg',
+    alt: 'Telegram chat where she reacts to a photo you sent',
+    title: 'She sees your photos',
+    body: 'Send her a picture — she reacts to it, talks about what’s in it, and keeps it as a shared memory.',
+  },
+  {
+    image: '/demo/same-face-selfies.jpg',
+    alt: 'Several selfies of the same companion across different scenes',
+    title: 'Same face, every time',
+    body: 'Selfies from wherever her day is right now — different scene, different outfit, unmistakably the same person.',
+  },
+];
+---
+<section id="screens" class="screens">
+  <div class="container">
+    <p class="eyebrow-plain">What it actually looks like</p>
+    <h2 class="screens__head">Real chats, straight out of <span class="it grad">Telegram</span>.</h2>
+
+    <div class="screens__grid">
+      {shots.map((s) => (
+        <figure class="shot">
+          <img src={s.image} alt={s.alt} loading="lazy" decoding="async" />
+          <figcaption>
+            <h3>{s.title}</h3>
+            <p>{s.body}</p>
+          </figcaption>
+        </figure>
+      ))}
+    </div>
+  </div>
+</section>
+
+<style>
+  .eyebrow-plain {
+    font-size: 0.78rem; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--text-muted); margin: 0 0 16px;
+  }
+  .screens__head { font-size: clamp(1.8rem, 3.6vw, 2.7rem); color: #fff; margin-bottom: 48px; }
+  .screens__grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
+  .shot {
+    margin: 0; background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); overflow: hidden;
+    display: flex; flex-direction: column;
+  }
+  .shot img { display: block; width: 100%; height: auto; border-bottom: 1px solid var(--border); }
+  .shot figcaption { padding: 22px 24px 26px; }
+  .shot h3 { font-size: 1.1rem; color: #fff; margin: 0 0 8px; }
+  .shot p { margin: 0; font-size: 0.93rem; color: var(--text-soft); }
+  @media (max-width: 900px) { .screens__grid { grid-template-columns: 1fr; max-width: 460px; margin: 0 auto; } }
+</style>

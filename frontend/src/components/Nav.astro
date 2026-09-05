@@ -1,0 +1,47 @@
+---
+import GhIcon from './GhIcon.astro';
+const repo = 'https://github.com/ericwang915/HerAndHim';
+---
+<nav class="nav">
+  <div class="container nav__inner">
+    <a href="/" class="nav__brand">her<span class="amp">&amp;</span>him</a>
+    <div class="nav__links">
+      <a href="/#repo">What's in the repo</a>
+      <a href="/#features">Why it feels real</a>
+      <a href="/#selfies">Selfies</a>
+      <a href="/#how">How it works</a>
+      <a href="/#compare">vs. hosted apps</a>
+    </div>
+    <div class="nav__actions">
+      <a href={repo} class="nav__ghost" target="_blank" rel="noopener">
+        <GhIcon size={14} /> Star <span data-stars></span>
+      </a>
+      <a href="/#run" class="btn btn-primary nav__cta">Run it yourself</a>
+    </div>
+  </div>
+</nav>
+
+<style>
+  .nav {
+    position: sticky; top: 0; z-index: 50; padding: 16px 0;
+    backdrop-filter: blur(14px);
+    background: rgba(18, 12, 16, 0.6);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  }
+  .nav__inner { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+  .nav__brand { font-family: var(--serif); font-size: 1.35rem; color: #fff; letter-spacing: -0.01em; }
+  .nav__brand .amp { font-style: italic; color: var(--accent); padding: 0 3px; }
+  .nav__links { display: flex; gap: 26px; font-size: 0.92rem; color: var(--text-soft); }
+  .nav__cta { padding: 9px 18px; font-size: 0.88rem; }
+  .nav__actions { display: flex; align-items: center; gap: 14px; }
+  .nav__ghost {
+    display: inline-flex; align-items: center; gap: 7px;
+    font-size: 0.9rem; color: var(--text-soft); white-space: nowrap;
+    padding: 8px 16px; border: 1px solid var(--border-strong); border-radius: 100px;
+    transition: color 0.15s ease, border-color 0.15s ease;
+  }
+  .nav__ghost [data-stars] { color: var(--accent); font-weight: 600; }
+  .nav__ghost:hover { color: var(--text); border-color: rgba(255,255,255,0.25); opacity: 1; }
+  @media (max-width: 1080px) { .nav__links { display: none; } }
+  @media (max-width: 520px) { .nav__ghost { display: none; } }
+</style>

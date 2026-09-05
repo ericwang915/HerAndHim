@@ -1,0 +1,169 @@
+---
+import GhIcon from './GhIcon.astro';
+
+const repo = 'https://github.com/ericwang915/HerAndHim';
+const run = 'docker run -e HERANDHIM_OPENROUTER_API_KEY=sk-or-... -p 7788:7788 -v herandhim:/data ghcr.io/ericwang915/herandhim';
+---
+<section class="hero">
+  <div class="container hero__grid">
+    <!-- Left: copy -->
+    <div class="hero__copy">
+      <a class="eyebrow eyebrow--repo" href={repo} target="_blank" rel="noopener">
+        <GhIcon size={14} />
+        <span class="repo__path">ericwang915/HerAndHim</span>
+        <span class="repo__stars">★ <span data-stars></span></span>
+      </a>
+
+      <h1>
+        A companion with a <span class="it grad">life</span> of her own —<br />running on your machine.
+      </h1>
+
+      <p class="hero__what">
+        <strong>HerAndHim is an open-source project you run yourself</strong> — one Docker container
+        (or one <code>pip install</code>) that turns any LLM API key into an AI girlfriend or boyfriend
+        who lives on your hardware.
+      </p>
+      <p class="hero__sub">
+        She keeps a real daily schedule in a real city, remembers what matters to you, texts like a
+        person, and takes selfies that always look like the same person. Your keys, your data, your
+        machine — no account, no subscription, no one reading your chats.
+      </p>
+
+      <div class="hero__run">
+        <code>{run}</code>
+        <button class="copy" data-copy={run} type="button" aria-label="Copy the docker command">Copy</button>
+      </div>
+
+      <div class="hero__cta">
+        <a href={repo} class="btn btn-primary" target="_blank" rel="noopener">
+          <GhIcon size={16} /> Star the repo
+        </a>
+        <a href="/#repo" class="btn btn-secondary">What's in it →</a>
+      </div>
+      <div class="hero__assure">
+        <span>🐍 Python 3.10+</span>
+        <span>🔑 16 LLM providers, or local Ollama</span>
+        <span>💬 Web + Telegram</span>
+      </div>
+    </div>
+
+    <!-- Right: repo card + orb -->
+    <div class="hero__stage">
+      <div class="orb hero__orb"></div>
+      <div class="repocard">
+        <div class="repocard__head">
+          <GhIcon size={16} />
+          <span class="repocard__name">ericwang915/<strong>HerAndHim</strong></span>
+          <span class="repocard__badge">Public</span>
+        </div>
+        <p class="repocard__desc">
+          Self-hosted AI companion with a simulated daily life, long-term memory, and
+          consistent-identity selfies. Your keys, your data, your machine.
+        </p>
+        <div class="repocard__meta">
+          <span><i class="lang"></i> Python</span>
+          <span>★ <span data-stars>stars</span></span>
+          <span>AGPL-3.0</span>
+          <span>250+ tests</span>
+        </div>
+      </div>
+      <span class="chip chip--b">Hates Monday mornings</span>
+      <span class="chip chip--c">Sister's name is Lena</span>
+    </div>
+  </div>
+</section>
+
+<style>
+  .hero { padding: 56px 0 90px; overflow: hidden; }
+  .hero__grid {
+    display: grid; grid-template-columns: 1.05fr 1fr; gap: 48px; align-items: center;
+  }
+  .eyebrow--repo { gap: 10px; text-transform: none; letter-spacing: 0; font-weight: 500; }
+  .eyebrow--repo:hover { opacity: 1; border-color: rgba(255,255,255,0.25); }
+  .repo__path { font-family: var(--mono); font-size: 0.8rem; color: var(--text); }
+  .repo__stars { color: var(--accent); font-weight: 700; }
+
+  .hero__copy h1 { font-size: clamp(2.2rem, 4.6vw, 3.5rem); margin: 22px 0 0; color: #fff; }
+  .grad {
+    background: var(--gradient); -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .hero__what { max-width: 520px; margin: 24px 0 14px; font-size: 1.08rem; color: var(--text); }
+  .hero__what strong { color: #fff; font-weight: 600; }
+  .hero__what code { font-family: var(--mono); font-size: 0.9em; color: var(--accent); }
+  .hero__sub { max-width: 520px; margin: 0 0 28px; font-size: 1rem; color: var(--text-soft); }
+
+  .hero__run {
+    display: flex; align-items: center; gap: 12px; max-width: 560px;
+    padding: 12px 12px 12px 16px; margin-bottom: 26px;
+    background: rgba(0, 0, 0, 0.32); border: 1px solid var(--border-strong);
+    border-radius: 14px;
+  }
+  .hero__run code {
+    font-family: var(--mono); font-size: 0.8rem; color: #e9dfe2;
+    white-space: nowrap; overflow-x: auto; flex: 1;
+    scrollbar-width: thin;
+  }
+  .copy {
+    flex-shrink: 0; font-family: inherit; font-size: 0.78rem; font-weight: 600;
+    color: var(--text); background: var(--surface-strong);
+    border: 1px solid var(--border-strong); border-radius: 8px;
+    padding: 7px 12px; cursor: pointer; transition: border-color 0.15s ease;
+  }
+  .copy:hover { border-color: rgba(255,255,255,0.28); }
+
+  .hero__cta { display: flex; gap: 14px; flex-wrap: wrap; }
+  .hero__assure { display: flex; gap: 24px; flex-wrap: wrap; margin-top: 28px; font-size: 0.88rem; color: var(--text-muted); }
+
+  .hero__stage { position: relative; min-height: 460px; display: flex; align-items: center; justify-content: center; }
+  .hero__orb {
+    position: absolute; width: 300px; height: 300px; opacity: 0.55;
+    animation: float 7s ease-in-out infinite;
+  }
+  @keyframes float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-14px); } }
+
+  .repocard {
+    position: relative; width: 100%; max-width: 380px;
+    background: rgba(24, 16, 21, 0.86); border: 1px solid var(--border-strong);
+    border-radius: var(--radius); padding: 20px 22px 18px;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 40px 90px -40px rgba(0,0,0,0.75);
+  }
+  .repocard__head { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; color: var(--text-soft); }
+  .repocard__name { font-family: var(--mono); font-size: 0.86rem; color: var(--text-soft); }
+  .repocard__name strong { color: var(--accent); font-weight: 600; }
+  .repocard__badge {
+    margin-left: auto; font-size: 0.68rem; letter-spacing: 0.04em; text-transform: uppercase;
+    padding: 2px 9px; border-radius: 100px; border: 1px solid var(--border-strong); color: var(--text-muted);
+  }
+  .repocard__desc { margin: 0 0 16px; font-size: 0.9rem; line-height: 1.6; color: var(--text-soft); }
+  .repocard__meta {
+    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+    font-size: 0.78rem; color: var(--text-muted);
+  }
+  .repocard__meta span { display: inline-flex; align-items: center; gap: 6px; }
+  .repocard__meta .lang {
+    width: 9px; height: 9px; border-radius: 50%; background: #3572A5; display: inline-block;
+  }
+  .repocard__meta [data-stars] { color: var(--accent); }
+
+  .chip {
+    position: absolute; padding: 9px 15px; font-size: 0.86rem; color: var(--text);
+    background: rgba(30, 20, 26, 0.82); border: 1px solid var(--border-strong);
+    border-radius: 100px; backdrop-filter: blur(8px); white-space: nowrap;
+    box-shadow: 0 8px 30px -10px rgba(0,0,0,0.5);
+  }
+  .chip--b { top: 12%; right: -2%; }
+  .chip--c { bottom: 14%; left: -4%; }
+  .dot {
+    width: 7px; height: 7px; background: var(--accent); border-radius: 50%;
+    box-shadow: 0 0 12px var(--accent); animation: pulse 2.4s ease-in-out infinite;
+  }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
+
+  @media (max-width: 880px) {
+    .hero__grid { grid-template-columns: 1fr; gap: 28px; }
+    .hero__stage { min-height: 300px; order: -1; }
+    .hero__orb { width: 230px; height: 230px; }
+    .chip { display: none; }
+  }
+</style>

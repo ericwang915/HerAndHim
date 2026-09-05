@@ -1,0 +1,101 @@
+---
+const repo = 'https://github.com/ericwang915/HerAndHim';
+const pypi = 'https://pypi.org/project/herandhim/';
+
+const ways = [
+  {
+    tag: 'Docker',
+    note: 'Nothing to install but Docker.',
+    cmd: 'docker run -e HERANDHIM_OPENROUTER_API_KEY=sk-or-... \\\n  -p 7788:7788 -v herandhim:/data \\\n  ghcr.io/ericwang915/herandhim',
+  },
+  {
+    tag: 'Python',
+    note: 'A wizard walks you through the rest.',
+    cmd: 'pipx install herandhim   # or: pip install herandhim\nherandhim onboard\nherandhim start',
+  },
+  {
+    tag: 'Fully local',
+    note: 'No key, no cloud — Ollama on your own box.',
+    cmd: 'ollama pull qwen3\nherandhim onboard        # pick Ollama\nherandhim start',
+  },
+];
+---
+<section id="run" class="run">
+  <div class="container">
+    <p class="eyebrow-plain">Run it</p>
+    <h2 class="run__head">One key. One command. <span class="it grad">Her whole life.</span></h2>
+    <p class="run__lede">
+      One text-LLM key is all you need and it’s auto-detected — OpenAI, Claude, Gemini, DeepSeek,
+      Qwen, Grok, OpenRouter and ten more work the same way. Add a Telegram bot token if you want
+      her on your phone.
+    </p>
+
+    <div class="ways">
+      {ways.map((w) => (
+        <div class="way">
+          <div class="way__head">
+            <span class="way__tag">{w.tag}</span>
+            <button class="copy" data-copy={w.cmd} type="button" aria-label={`Copy the ${w.tag} command`}>Copy</button>
+          </div>
+          <pre><code>{w.cmd}</code></pre>
+          <p class="way__note">{w.note}</p>
+        </div>
+      ))}
+    </div>
+
+    <div class="cta">
+      <div class="orb cta__orb"></div>
+      <h2 class="cta__head">Star it, then go build her.</h2>
+      <p class="cta__sub">
+        New personas, models and features land often — a star is how GitHub tells you the moment they do.
+      </p>
+      <div class="cta__btns">
+        <a href={repo} class="btn btn-primary cta__btn" target="_blank" rel="noopener">★ Star on GitHub</a>
+        <a href={`${repo}#-run-it-one-command`} class="btn btn-secondary" target="_blank" rel="noopener">Read the docs</a>
+      </div>
+      <p class="cta__meta">AGPL-3.0 · Python 3.10+ · <a href={pypi} target="_blank" rel="noopener">on PyPI</a></p>
+    </div>
+  </div>
+</section>
+
+<style>
+  .eyebrow-plain { font-size: 0.78rem; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; color: var(--text-muted); margin: 0 0 16px; }
+  .run__head { font-size: clamp(1.8rem, 3.6vw, 2.7rem); color: #fff; margin-bottom: 16px; }
+  .run__lede { max-width: 660px; margin: 0 0 44px; color: var(--text-soft); }
+
+  .ways { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-bottom: 72px; }
+  .way {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 20px 22px 22px;
+    display: flex; flex-direction: column;
+  }
+  .way__head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+  .way__tag { font-size: 0.8rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent); }
+  .way pre {
+    margin: 0; padding: 14px 16px; overflow-x: auto; flex: 1;
+    background: rgba(0,0,0,0.32); border: 1px solid var(--border); border-radius: 12px;
+  }
+  .way code { font-family: var(--mono); font-size: 0.78rem; line-height: 1.7; color: #e9dfe2; white-space: pre; }
+  .way__note { margin: 14px 0 0; font-size: 0.85rem; color: var(--text-muted); }
+  .copy {
+    font-family: inherit; font-size: 0.75rem; font-weight: 600; color: var(--text);
+    background: var(--surface-strong); border: 1px solid var(--border-strong);
+    border-radius: 8px; padding: 5px 11px; cursor: pointer; transition: border-color 0.15s ease;
+  }
+  .copy:hover { border-color: rgba(255,255,255,0.28); }
+
+  .cta {
+    position: relative; text-align: center; border-radius: var(--radius-lg);
+    border: 1px solid var(--border); background: var(--gradient-soft);
+    padding: 64px 28px; overflow: hidden;
+  }
+  .cta__orb { width: 84px; height: 84px; margin: 0 auto 26px; }
+  .cta__head { font-size: clamp(2rem, 4vw, 3.2rem); color: #fff; margin-bottom: 14px; }
+  .cta__sub { max-width: 460px; margin: 0 auto 30px; color: var(--text-soft); }
+  .cta__btns { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+  .cta__btn { font-size: 1rem; padding: 15px 30px; }
+  .cta__meta { margin: 26px 0 0; font-size: 0.85rem; color: var(--text-muted); }
+  .cta__meta a { color: var(--accent); }
+
+  @media (max-width: 1000px) { .ways { grid-template-columns: 1fr; } }
+</style>
