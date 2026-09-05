@@ -5,7 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>her & him</title>
   <link rel="icon" type="image/png" href="/static/favicon.png">
-  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- The dashboard is dark-only. Say so, so the browser draws its own
+       widgets (select popups, scrollbars, autofill) with light text too. -->
+  <meta name="color-scheme" content="dark">
+  <!-- Tailwind's runtime, served from this process. It used to come from
+       Tailwind's public CDN: with that host blocked or unreachable, every
+       text colour on the page vanished while the background below stayed
+       dark — black on black (#41). Nothing may load from a third party. -->
+  <script src="/static/vendor/tailwind-3.4.17.js"></script>
   <script>
     tailwind.config = {
       darkMode: 'class',
@@ -27,6 +34,16 @@
        families installed locally they're still used; otherwise the
        system stack below takes over. */
     * { box-sizing: border-box; }
+    /* Legible with no Tailwind at all. Every colour on the page is a
+       utility class, but the dark background below is forced with
+       !important — so if the runtime ever fails, these keep the text and
+       the form controls readable instead of black on black (#41).
+       Utility classes still win: they're class selectors, these aren't. */
+    :root { color-scheme: dark; }
+    body { color: #d6c9ce; }
+    input, select, textarea, button { color: inherit; }
+    input, select, textarea { background-color: rgba(255,255,255,.04); }
+    option, optgroup { background-color: #1a1015; color: #f0e7ea; }
     body {
       font-family: 'Inter', system-ui, -apple-system, sans-serif;
       background:
