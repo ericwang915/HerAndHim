@@ -74,6 +74,21 @@ def test_fresh_render_reuses_the_gemini_chat_key_for_photos(rc):
     assert cfg["skills"]["gemini"]["model"] == "gemini-2.5-flash-image"
 
 
+def test_vision_env_vars_land_under_llm_vision(rc):
+    """#43: text on one local model, photos on another."""
+    cfg = rc.render(None, {"HERANDHIM_LLM_PROVIDER": "ollama",
+                           "HERANDHIM_VISION_PROVIDER": "ollama",
+                           "HERANDHIM_VISION_MODEL": "llava"})
+    assert cfg["llm"]["provider"] == "ollama"
+    assert cfg["llm"]["vision"] == {"provider": "ollama", "model": "llava"}
+
+    # Not set → not written, fresh or otherwise; a saved one survives a restart.
+    assert "vision" not in rc.render(None, {})["llm"]
+    saved = _saved_config()
+    saved["llm"]["vision"] = {"provider": "ollama", "model": "moondream"}
+    assert rc.render(saved, {})["llm"]["vision"] == {"provider": "ollama", "model": "moondream"}
+
+
 def test_fresh_render_with_no_keys_still_boots(rc):
     cfg = rc.render(None, {})
     assert cfg["llm"]["provider"] == "deepseek"

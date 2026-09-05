@@ -19,6 +19,7 @@ Called by ``entrypoint.sh`` on every container boot.
 Env vars (the container's ``.env.example`` documents them all):
   HERANDHIM_<PROVIDER>_API_KEY / _MODEL / _BASE_URL   text LLM, provider inferred
   HERANDHIM_LLM_PROVIDER                              pin the text provider
+  HERANDHIM_VISION_PROVIDER / _MODEL                  separate model for image turns
   HERANDHIM_TELEGRAM_TOKEN / _TELEGRAM_ALLOWED_USERS
   HERANDHIM_IMAGE_PROVIDER / HERANDHIM_IMAGE_MODEL    selfies, backend inferred
   HERANDHIM_<BACKEND>_API_KEY / _BASE_URL             per image backend
@@ -150,6 +151,17 @@ def render(existing: dict | None, environ: Mapping[str, str] = os.environ) -> di
         upper = name.upper()
         put(("llm", name, "apiKey"), f"HERANDHIM_{upper}_API_KEY", "")
         put(("llm", name, "model"),  f"HERANDHIM_{upper}_MODEL",   model)
+
+    # A second model for the turns that carry an image — e.g. Ollama running
+    # llama3.1 for chat and llava for photos (#43). Optional; nothing is
+    # written unless set. Endpoint and key default to that provider's own
+    # llm.<provider> section, so usually provider + model is all you need.
+    vision = env("HERANDHIM_VISION_PROVIDER").lower()
+    if vision:
+        _set(cfg, ("llm", "vision", "provider"), vision)
+    put(("llm", "vision", "model"),   "HERANDHIM_VISION_MODEL")
+    put(("llm", "vision", "baseUrl"), "HERANDHIM_VISION_BASE_URL")
+    put(("llm", "vision", "apiKey"),  "HERANDHIM_VISION_API_KEY")
 
     # ── Telegram ────────────────────────────────────────────────────────
     put(("channels", "telegram", "token"), "HERANDHIM_TELEGRAM_TOKEN", "")

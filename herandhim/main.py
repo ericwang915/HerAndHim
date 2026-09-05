@@ -23,41 +23,70 @@ logger = logging.getLogger(__name__)
 # ── Provider builder ─────────────────────────────────────────────────────────
 
 def _build_provider():
-    """Instantiate the LLM provider, wrapping with a vision fallback if needed.
+    """Instantiate the LLM provider, pairing it with a vision model if needed.
 
-    If the configured primary can't see images AND a Gemini key is available,
-    we transparently wrap it with a ``RoutingProvider`` that dispatches each
-    chat turn to whichever model can handle it. Text → cheap primary;
-    image → Gemini.
+    Text turns go to the primary; turns that carry an image go to the vision
+    model, via ``RoutingProvider``. The vision model is, in order:
+
+    1. ``llm.vision`` in herandhim.json (or ``VISION_PROVIDER`` /
+       ``VISION_MODEL``) — any provider, e.g. Ollama running ``llama3.1`` for
+       chat and ``llava`` or ``qwen2.5vl`` for photos, fully local (#43).
+       When set it is always used, even if the primary could see images.
+    2. Nothing, if the primary can already see images.
+    3. Gemini, if a Gemini key is configured — the original fallback.
     """
     primary = _build_primary_provider()
-    if getattr(primary, "supports_images", False):
+    vision = _build_vision_provider(primary)
+    if vision is None:
         return primary
 
-    # Vision fallback: only built if the user has a Gemini key. Failures
-    # here are non-fatal — we keep the primary and accept "no vision".
+    from .core.llm.routing import RoutingProvider
+    logger.info(
+        "[Provider] Routing %s (text) + %s (vision)",
+        getattr(primary, "model_name", "?"),
+        getattr(vision, "model_name", "?"),
+    )
+    return RoutingProvider(primary, vision)
+
+
+def _build_vision_provider(primary):
+    """The model that gets the image turns, or ``None`` to use the primary.
+
+    Failures are non-fatal: a misconfigured vision model logs a warning and
+    she carries on text-only rather than refusing to start.
+    """
+    name = config.get_str("llm", "vision", "provider", env="VISION_PROVIDER").lower()
+    if name:
+        try:
+            # The user named this model *for* images — trust them over the
+            # model-name heuristic in OpenAICompatibleProvider, which can't
+            # know every Ollama tag.
+            return _build_named_provider(
+                name,
+                api_key=config.get_str("llm", "vision", "apiKey", env="VISION_API_KEY") or None,
+                model=config.get_str("llm", "vision", "model", env="VISION_MODEL") or None,
+                base_url=config.get_str("llm", "vision", "baseUrl", env="VISION_BASE_URL") or None,
+                supports_images=True,
+            )
+        except Exception as exc:
+            logger.warning("[Provider] Vision model unavailable, images off: %s", exc)
+            return None
+
+    if getattr(primary, "supports_images", False):
+        return None
+
     gemini_key = config.get_str("llm", "gemini", "apiKey", env="GEMINI_API_KEY")
     if not gemini_key:
-        return primary
-
+        return None
     try:
-        from .core.llm.gemini_client import GeminiProvider
-        from .core.llm.routing import RoutingProvider
-        vision = GeminiProvider(
+        return _build_named_provider(
+            "gemini",
             api_key=gemini_key,
-            model_name=config.get_str(
-                "llm", "gemini", "model", default="gemini-2.5-flash",
-            ),
+            model=config.get_str("llm", "gemini", "model", default="gemini-2.5-flash"),
         )
-        logger.info(
-            "[Provider] Routing %s (text) + %s (vision fallback)",
-            getattr(primary, "model_name", "?"),
-            getattr(vision, "model_name", "?"),
-        )
-        return RoutingProvider(primary, vision)
     except Exception as exc:
         logger.warning("[Provider] Vision fallback unavailable: %s", exc)
-        return primary
+        return None
 
 
 # OpenAI-compatible providers — the vast majority. Each entry is
@@ -164,35 +193,54 @@ _PROVIDER_ALIASES = {
 
 
 def _build_primary_provider():
-    """Instantiate the LLM provider selected by config.
+    """Instantiate the LLM provider selected by ``llm.provider``."""
+    provider_name = config.get_str(
+        "llm", "provider", env="LLM_PROVIDER", default="deepseek"
+    )
+    return _build_named_provider(provider_name)
+
+
+def _build_named_provider(
+    provider_name: str,
+    *,
+    api_key: str | None = None,
+    model: str | None = None,
+    base_url: str | None = None,
+    supports_images: bool | None = None,
+):
+    """Instantiate one provider by name.
+
+    Credentials and model default to that provider's own ``llm.<name>``
+    section, so ``llm.vision = {"provider": "ollama", "model": "llava"}``
+    reuses the Ollama base URL already configured for chat. Any of
+    ``api_key`` / ``model`` / ``base_url`` overrides that section.
 
     Anything with an OpenAI-compatible API is table-driven (see
     ``_OPENAI_COMPATIBLE``); Anthropic and Gemini have native SDKs and are
     handled separately.
     """
-    provider_name = config.get_str(
-        "llm", "provider", env="LLM_PROVIDER", default="deepseek"
-    ).lower()
+    provider_name = provider_name.lower()
     provider_name = _PROVIDER_ALIASES.get(provider_name, provider_name)
 
     if provider_name in ("claude", "anthropic"):
         from .core.llm.anthropic_client import AnthropicProvider
-        api_key = config.get_str("llm", "claude", "apiKey", env="ANTHROPIC_API_KEY")
+        api_key = api_key or config.get_str("llm", "claude", "apiKey", env="ANTHROPIC_API_KEY")
         if not api_key:
             raise ValueError("ANTHROPIC_API_KEY not set (env or herandhim.json)")
         return AnthropicProvider(
             api_key=api_key,
-            model_name=config.get_str(
+            model_name=model or config.get_str(
                 "llm", "claude", "model", default="claude-sonnet-4-20250514",
             ),
         )
 
     if provider_name == "gemini":
         from .core.llm.gemini_client import GeminiProvider
-        api_key = config.get_str("llm", "gemini", "apiKey", env="GEMINI_API_KEY")
+        api_key = api_key or config.get_str("llm", "gemini", "apiKey", env="GEMINI_API_KEY")
         if not api_key:
             raise ValueError("GEMINI_API_KEY not set (env or herandhim.json)")
-        return GeminiProvider(api_key=api_key)
+        model = model or config.get_str("llm", "gemini", "model")
+        return GeminiProvider(api_key=api_key, model_name=model) if model else GeminiProvider(api_key=api_key)
 
     spec = _OPENAI_COMPATIBLE.get(provider_name)
     if spec is None:
@@ -200,15 +248,15 @@ def _build_primary_provider():
         raise ValueError(f"Unknown LLM_PROVIDER: '{provider_name}'. Known: {known}")
 
     from .core.llm.openai_compatible import OpenAICompatibleProvider
-    api_key = config.get_str("llm", provider_name, "apiKey", env=spec["env"])
+    api_key = api_key or config.get_str("llm", provider_name, "apiKey", env=spec["env"])
     if not api_key:
         if spec.get("needs_key", True):
             raise ValueError(f"{spec['env']} not set (env or herandhim.json)")
         # Local servers accept any non-empty token.
         api_key = "local"
 
-    base_url = config.get_str("llm", provider_name, "baseUrl", default=spec["base"])
-    model = config.get_str("llm", provider_name, "model", default=spec["model"])
+    base_url = base_url or config.get_str("llm", provider_name, "baseUrl", default=spec["base"])
+    model = model or config.get_str("llm", provider_name, "model", default=spec["model"])
     if not base_url or not model:
         raise ValueError(
             f"Provider '{provider_name}' needs llm.{provider_name}.baseUrl and "
@@ -216,6 +264,7 @@ def _build_primary_provider():
         )
     return OpenAICompatibleProvider(
         api_key=api_key, base_url=base_url, model_name=model,
+        supports_images=supports_images,
     )
 
 
