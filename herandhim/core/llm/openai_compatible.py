@@ -66,7 +66,12 @@ class OpenAICompatibleProvider(LLMProvider):
                 n.startswith("deepseek-vl")        # self-hosted VL2 family only
                 or "vision" in n                   # gpt-4-vision, grok-vision, …
                 or n.startswith("qwen-vl") or n.startswith("qwen2-vl") or n.startswith("qwen2.5-vl")
-                or n.startswith("llava")           # llava-1.5, llava-next, …
+                or n.startswith("llava")           # llava-1.5, llava-next, bakllava…
+                or n.startswith("bakllava")
+                or n.startswith(("qwen2.5vl", "qwen3-vl", "qwen3vl"))  # Ollama tags drop the hyphen
+                or n.startswith("minicpm-v")
+                or n.startswith("moondream")
+                or n.startswith("pixtral")
                 or n.startswith("internvl")
                 or n.startswith("yi-vl")
                 or n.startswith("moonshot-v1-vision")

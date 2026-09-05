@@ -15,6 +15,8 @@
 #   HERANDHIM_<PROVIDER>_API_KEY   the only one that's required, e.g.
 #                                  HERANDHIM_DEEPSEEK_API_KEY — the provider is inferred
 #   HERANDHIM_LLM_PROVIDER         optional override, e.g. "deepseek"
+#   HERANDHIM_VISION_PROVIDER      optional: a second model for photos, e.g.
+#   HERANDHIM_VISION_MODEL         "ollama" + "llava" next to a text-only chat model
 #   HERANDHIM_TELEGRAM_TOKEN       your bot token (optional if web-only)
 #   HERANDHIM_IMAGE_PROVIDER       optional: gemini|openai|seedream|fal|replicate|
 #                                  sdwebui|comfyui|custom — also inferred from
