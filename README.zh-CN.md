@@ -149,6 +149,21 @@ herandhim chat
 | 🎙️ **听得懂语音条**（Deepgram） | 👀 **看得见你发的图**（视觉） | 🗣️ **8 种语言**，灵魂/人设按母语生成 |
 | 🌐 **网页面板** + 📱 **Telegram** | 🛠️ **可扩展技能**（模型能自己写技能） | 💾 **全本地** —— SQLite + Markdown，零云依赖 |
 
+**让她看见你发的图。** 聊天模型不支持图片也没关系：单独指定一个负责“看图”的模型，
+任意厂商都行 —— 包括同一台 Ollama 上的另一个本地模型：
+
+```json
+"llm": {
+  "provider": "ollama",
+  "ollama": { "model": "llama3.1", "baseUrl": "http://localhost:11434/v1" },
+  "vision": { "provider": "ollama", "model": "llava" }
+}
+```
+
+（Docker 里对应 `HERANDHIM_VISION_PROVIDER` / `HERANDHIM_VISION_MODEL`。）接口地址和
+key 默认沿用该厂商自己的配置，一般填 provider + model 就够了。什么都不填的话，
+只要有 Gemini key 她也一样看得见。
+
 ---
 
 ## 🆚 和托管型产品比

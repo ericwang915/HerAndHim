@@ -339,6 +339,22 @@ or pin it with `HERANDHIM_LLM_PROVIDER`. Two run **fully local** — no key, no 
 | **LM Studio** 🏠 local | *none* | your loaded model |
 | **Custom** | `HERANDHIM_CUSTOM_API_KEY` | any OpenAI-compatible endpoint |
 
+**Seeing your photos.** If the chat model can't take images, name a second
+model for the turns that carry one — any provider, including a different
+local model on the same Ollama:
+
+```json
+"llm": {
+  "provider": "ollama",
+  "ollama": { "model": "llama3.1", "baseUrl": "http://localhost:11434/v1" },
+  "vision": { "provider": "ollama", "model": "llava" }
+}
+```
+
+(`HERANDHIM_VISION_PROVIDER` / `HERANDHIM_VISION_MODEL` in Docker.) Endpoint
+and key default to that provider's own section, so provider + model is usually
+enough. With nothing set, a Gemini key alone still gives her vision.
+
 ---
 
 ## 📷 AI selfies

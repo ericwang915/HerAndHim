@@ -28,6 +28,15 @@
       "apiKey": "",
       "model": "glm-4-flash",
       "baseUrl": "https://open.bigmodel.cn/api/paas/v4/"
+    },
+    "ollama": {
+      "apiKey": "",
+      "model": "llama3.1",
+      "baseUrl": "http://localhost:11434/v1"
+    },
+    "vision": {
+      "provider": "",
+      "model": ""
     }
   },
   "tavily": {
