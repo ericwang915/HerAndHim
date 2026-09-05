@@ -1,19 +1,27 @@
 #!/bin/sh
 # HerAndHim container entrypoint.
 #
-# Materializes /data/herandhim.json from environment variables on first boot,
+# Renders $HERANDHIM_HOME/herandhim.json from HERANDHIM_* environment variables,
 # then launches the daemon in the foreground.
+#
+#   first boot   → the file is created with defaults for every provider
+#   every boot   → only env vars that are actually set are applied on top of
+#                  the existing file; the companion, her city/timezone, and
+#                  anything saved from the dashboard are preserved (#42)
+#
+# To start over from env vars alone, delete herandhim.json from the volume.
 #
 # Env vars (written to herandhim.json):
 #   HERANDHIM_<PROVIDER>_API_KEY   the only one that's required, e.g.
-#                             HERANDHIM_DEEPSEEK_API_KEY — the provider is inferred
+#                                  HERANDHIM_DEEPSEEK_API_KEY — the provider is inferred
 #   HERANDHIM_LLM_PROVIDER         optional override, e.g. "deepseek"
 #   HERANDHIM_TELEGRAM_TOKEN       your bot token (optional if web-only)
 #   HERANDHIM_IMAGE_PROVIDER       optional: gemini|openai|seedream|fal|replicate|
-#                             sdwebui|custom — also inferred from whichever
-#                             image key is set
+#                                  sdwebui|comfyui|custom — also inferred from
+#                                  whichever image key is set
 #
-# See deploy/local/.env.example for the full list.
+# See deploy/local/.env.example for the full list, and render_config.py for
+# exactly how each variable maps onto the file.
 
 set -eu
 
@@ -22,148 +30,7 @@ CONFIG_FILE="$CONFIG_DIR/herandhim.json"
 
 mkdir -p "$CONFIG_DIR"
 
-# Always regenerate config from env vars on boot. Fly secrets are the source
-# of truth — user state (memory/photos/persona/.md files) stays on the volume.
-echo "[entrypoint] Writing config from env vars → $CONFIG_FILE"
-python - <<'PY'
-import json, os, pathlib
-
-def env(key, default=""):
-    return os.environ.get(key, default)
-
-# provider key -> (default model, default base URL). Keep in sync with
-# _OPENAI_COMPATIBLE in herandhim/main.py. Claude and Gemini use native SDKs
-# and take no base URL.
-PROVIDERS = {
-    "openai":      ("gpt-4o-mini",                             "https://api.openai.com/v1"),
-    "openrouter":  ("deepseek/deepseek-chat",                  "https://openrouter.ai/api/v1"),
-    "ollama":      ("llama3.1",                                "http://localhost:11434/v1"),
-    "lmstudio":    ("local-model",                             "http://localhost:1234/v1"),
-    "deepseek":    ("deepseek-chat",                           "https://api.deepseek.com/v1"),
-    "grok":        ("grok-3",                                  "https://api.x.ai/v1"),
-    "kimi":        ("moonshot-v1-128k",                        "https://api.moonshot.cn/v1"),
-    "glm":         ("glm-4-flash",                             "https://open.bigmodel.cn/api/paas/v4/"),
-    "qwen":        ("qwen-plus",                               "https://dashscope.aliyuncs.com/compatible-mode/v1"),
-    "mistral":     ("mistral-large-latest",                    "https://api.mistral.ai/v1"),
-    "groq":        ("llama-3.3-70b-versatile",                 "https://api.groq.com/openai/v1"),
-    "together":    ("meta-llama/Llama-3.3-70B-Instruct-Turbo", "https://api.together.xyz/v1"),
-    "siliconflow": ("deepseek-ai/DeepSeek-V3",                 "https://api.siliconflow.cn/v1"),
-    "custom":      ("",                                        ""),
-}
-
-# Default to whichever provider actually has a key, so `docker run -e
-# HERANDHIM_OPENAI_API_KEY=...` just works without also setting HERANDHIM_LLM_PROVIDER.
-provider = env("HERANDHIM_LLM_PROVIDER").lower()
-if not provider:
-    for name in list(PROVIDERS) + ["claude", "gemini"]:
-        if env(f"HERANDHIM_{name.upper()}_API_KEY"):
-            provider = name
-            break
-    else:
-        provider = "deepseek"
-
-llm = {"provider": provider}
-for name, (model, base) in PROVIDERS.items():
-    entry = {
-        "apiKey": env(f"HERANDHIM_{name.upper()}_API_KEY"),
-        "model":  env(f"HERANDHIM_{name.upper()}_MODEL", model),
-    }
-    base_url = env(f"HERANDHIM_{name.upper()}_BASE_URL", base)
-    if base_url:
-        entry["baseUrl"] = base_url
-    llm[name] = entry
-llm["claude"] = {
-    "apiKey": env("HERANDHIM_CLAUDE_API_KEY"),
-    "model":  env("HERANDHIM_CLAUDE_MODEL", "claude-sonnet-4-20250514"),
-}
-llm["gemini"] = {
-    "apiKey": env("HERANDHIM_GEMINI_API_KEY"),
-    "model":  env("HERANDHIM_GEMINI_MODEL", "gemini-2.0-flash"),
-}
-
-# ── Photos ──────────────────────────────────────────────────────────────
-# Any of these backends can draw her selfies.  Setting one key is enough:
-# the provider is inferred, same as for the LLM.
-IMAGE_BACKENDS = {
-    "seedream":     ("HERANDHIM_SEEDREAM_API_KEY",  "seedream-5-0-lite-260128",
-                     "https://ark.ap-southeast.bytepluses.com/api/v3"),
-    "openai":       ("HERANDHIM_IMAGE_OPENAI_KEY",  "gpt-image-1", ""),
-    "gemini":       ("HERANDHIM_IMAGE_GEMINI_KEY",  "gemini-2.5-flash-image", ""),
-    "openrouter":   ("HERANDHIM_IMAGE_OPENROUTER_KEY", "google/gemini-2.5-flash-image", ""),
-    "bfl":          ("HERANDHIM_BFL_API_KEY",       "flux-kontext-pro", ""),
-    "fal":          ("HERANDHIM_FAL_KEY",           "fal-ai/flux/schnell", ""),
-    "replicate":    ("HERANDHIM_REPLICATE_API_TOKEN", "black-forest-labs/flux-schnell", ""),
-    "stability":    ("HERANDHIM_STABILITY_API_KEY", "core", ""),
-    "dashscope":    ("HERANDHIM_DASHSCOPE_API_KEY", "wan2.2-t2i-flash", ""),
-    "sdwebui":      ("",                       "", "http://localhost:7860"),
-    "comfyui":      ("",                       "", "http://localhost:8188"),
-    "pollinations": ("",                       "flux", ""),
-    "custom":       ("HERANDHIM_IMAGE_API_KEY",     "", ""),
-}
-
-image_provider = env("HERANDHIM_IMAGE_PROVIDER").lower()
-if not image_provider:
-    for name, (key_env, *_r) in IMAGE_BACKENDS.items():
-        if key_env and env(key_env):
-            image_provider = name
-            break
-    else:
-        # Local servers, then keys already set for chat/vision. An explicitly
-        # set image key always wins over these.
-        if env("HERANDHIM_COMFYUI_BASE_URL"):
-            image_provider = "comfyui"
-        elif env("HERANDHIM_SDWEBUI_BASE_URL"):
-            image_provider = "sdwebui"
-        elif env("HERANDHIM_GEMINI_API_KEY"):
-            image_provider = "gemini"
-        elif env("HERANDHIM_OPENROUTER_API_KEY"):
-            image_provider = "openrouter"
-
-skills = {}
-for name, (key_env, model, base) in IMAGE_BACKENDS.items():
-    entry = {}
-    key = env(key_env) if key_env else ""
-    # Gemini and OpenRouter keys already set for chat/vision work for images
-    # too — don't make people paste the same key under a second name.
-    if not key and name == image_provider:
-        key = env(f"HERANDHIM_{name.upper()}_API_KEY")
-    if key:
-        entry["apiKey"] = key
-    override = env("HERANDHIM_IMAGE_MODEL") if name == image_provider else ""
-    if name == "seedream":
-        override = override or env("HERANDHIM_SEEDREAM_MODEL")
-    if override or model:
-        entry["model"] = override or model
-    base_val = env(f"HERANDHIM_{name.upper()}_BASE_URL", base)
-    if base_val:
-        entry["baseUrl"] = base_val
-    skills[name] = entry
-
-if image_provider:
-    skills["image"] = {"provider": image_provider}
-
-config = {
-    "llm": llm,
-    "channels": {
-        "telegram": {
-            "token": env("HERANDHIM_TELEGRAM_TOKEN"),
-            "allowedUsers": [
-                int(x) for x in env("HERANDHIM_TELEGRAM_ALLOWED_USERS", "").replace(",", " ").split() if x
-            ],
-        },
-    },
-    "skills": skills,
-    "deepgram": {"apiKey": env("HERANDHIM_DEEPGRAM_API_KEY")},
-    "tavily":   {"apiKey": env("HERANDHIM_TAVILY_API_KEY")},
-    "web": {
-        "host": "0.0.0.0",
-        "port": int(env("PORT", "7788")),
-    },
-}
-
-path = pathlib.Path(os.environ.get("CONFIG_FILE", "/data/herandhim.json"))
-path.write_text(json.dumps(config, indent=2))
-PY
+python /usr/local/bin/render_config.py "$CONFIG_FILE"
 
 # ── Launch ──────────────────────────────────────────────────────────────
 # Single-process daemon: web dashboard + (if a Telegram token is set) the bot.

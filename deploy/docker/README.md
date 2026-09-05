@@ -16,6 +16,12 @@ docker compose -f deploy/local/docker-compose.yml up --build
 Open http://localhost:7788, finish the browser wizard, and chat. Data persists
 in the `herandhim_data` volume across restarts.
 
+`herandhim.json` on that volume is yours: the wizard and the dashboard write
+to it, and a restart keeps every edit. Env vars are applied on top on every
+boot — so rotating a key in `.env` takes effect, and `HERANDHIM_LLM_PROVIDER`
+still pins the provider — but nothing you saved is ever removed. To start
+over from env vars alone, delete the file from the volume.
+
 Or run the prebuilt image directly (no clone, no build):
 
 ```bash
