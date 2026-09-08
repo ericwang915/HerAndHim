@@ -73,6 +73,7 @@ herandhim = [
     "templates/**/*.sh",
     "templates/**/*.yaml",
     "templates/**/*.md",
+    "templates/**/*.json",
     "web/static/**/*",
 ]
 
