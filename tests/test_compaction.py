@@ -327,3 +327,48 @@ class TestAgentCompact:
         triggered = agent._maybe_auto_compact()
         assert not triggered
         assert agent.compaction_count == 0
+
+
+# ── Tunable compaction threshold (#49) ───────────────────────────────────────
+
+class TestCompactionThresholdConfig:
+    def _make_agent(self, tmp_path, **kwargs):
+        from herandhim.core.agent import Agent
+
+        memory_dir = str(tmp_path / "memory")
+        os.makedirs(memory_dir, exist_ok=True)
+        skills_dir = str(tmp_path / "skills")
+        os.makedirs(skills_dir, exist_ok=True)
+
+        return Agent(
+            provider=make_provider(),
+            memory_dir=memory_dir,
+            skills_dirs=[skills_dir],
+            knowledge_path=None,
+            persona_path=None,
+            soul_path=None,
+            verbose=False,
+            **kwargs,
+        )
+
+    def test_default_threshold(self, tmp_path, monkeypatch):
+        from herandhim.core.compaction import DEFAULT_AUTO_THRESHOLD_TOKENS
+        monkeypatch.delenv("HERANDHIM_AUTO_COMPACT_THRESHOLD", raising=False)
+        agent = self._make_agent(tmp_path)
+        assert agent.compaction_threshold == DEFAULT_AUTO_THRESHOLD_TOKENS
+
+    def test_env_var_overrides_default(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("HERANDHIM_AUTO_COMPACT_THRESHOLD", "25000")
+        agent = self._make_agent(tmp_path)
+        assert agent.compaction_threshold == 25000
+
+    def test_explicit_kwarg_wins_over_env(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("HERANDHIM_AUTO_COMPACT_THRESHOLD", "25000")
+        agent = self._make_agent(tmp_path, compaction_threshold=5000)
+        assert agent.compaction_threshold == 5000
+
+    def test_invalid_env_falls_back_to_default(self, tmp_path, monkeypatch):
+        from herandhim.core.compaction import DEFAULT_AUTO_THRESHOLD_TOKENS
+        monkeypatch.setenv("HERANDHIM_AUTO_COMPACT_THRESHOLD", "not-a-number")
+        agent = self._make_agent(tmp_path)
+        assert agent.compaction_threshold == DEFAULT_AUTO_THRESHOLD_TOKENS

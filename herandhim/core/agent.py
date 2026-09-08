@@ -126,7 +126,10 @@ class Agent:
     show_full_context  : print the full context window before each LLM call
     max_chat_history   : max non-system messages kept in the sliding window
     auto_compaction    : trigger compaction when token estimate exceeds threshold
-    compaction_threshold : token threshold for auto-compaction
+    compaction_threshold : token threshold for auto-compaction. When None
+                         (the default), resolved from the ``agent.autoCompactThreshold``
+                         config key or the ``HERANDHIM_AUTO_COMPACT_THRESHOLD``
+                         env var; falls back to 10000 when unset or 0.
     compaction_recent_keep : number of recent messages kept verbatim after compaction
     cron_manager       : CronScheduler instance (enables cron_add/remove/list tools)
     """
@@ -151,7 +154,7 @@ class Agent:
         show_full_context: bool = False,
         max_chat_history: int = 60,
         auto_compaction: bool = True,
-        compaction_threshold: int = DEFAULT_AUTO_THRESHOLD_TOKENS,
+        compaction_threshold: int | None = None,
         compaction_recent_keep: int = DEFAULT_RECENT_KEEP,
         cron_manager=None,
         rag: KnowledgeRAG | None = None,
@@ -215,6 +218,18 @@ class Agent:
         self.show_full_context = show_full_context
         self.max_chat_history = max_chat_history
         self.auto_compaction = auto_compaction
+        if compaction_threshold is None:
+            # Tunable via config / env (#49); 0 or unset means the built-in default.
+            try:
+                compaction_threshold = config.get_int(
+                    "agent", "autoCompactThreshold",
+                    env="HERANDHIM_AUTO_COMPACT_THRESHOLD",
+                    default=0,
+                )
+            except (TypeError, ValueError):
+                compaction_threshold = 0
+            if compaction_threshold <= 0:
+                compaction_threshold = DEFAULT_AUTO_THRESHOLD_TOKENS
         self.compaction_threshold = compaction_threshold
         self.compaction_recent_keep = compaction_recent_keep
         self.compaction_count: int = 0

@@ -309,9 +309,18 @@ All runtime data lives under `~/.herandhim/`:
   },
   "deepgram": { "apiKey": "" },            // voice input (optional)
   "tavily":   { "apiKey": "" },            // web search (optional)
-  "web": { "host": "0.0.0.0", "port": 7788 }
+  "web": { "host": "0.0.0.0", "port": 7788 },
+  "agent": {
+    "autoCompactThreshold": 0,             // auto-compaction token threshold (0 = default 10000)
+    "verbose": false
+  }
 }
 ```
+
+The auto-compaction threshold can also be set with the
+`HERANDHIM_AUTO_COMPACT_THRESHOLD` env var (takes priority over the config
+file). Raise it if replies get cut off mid-sentence because compaction fires
+too early; the default is 10000 tokens.
 
 ---
 
