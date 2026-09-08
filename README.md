@@ -5,13 +5,17 @@
 <h1 align="center">HerAndHim 🐾💕</h1>
 
 <p align="center">
-  <strong>A self-hosted AI companion with a life of her own.</strong>
+  <strong>Self-hosted AI boyfriend / girlfriend — they live a day in a real city,<br>
+  remember what matters, and take selfies that stay the same face.</strong>
 </p>
 
 <p align="center">
-  She keeps a real daily schedule in a real city, remembers what matters to you,<br>
-  texts like a person, and takes selfies that always look like the same person.<br>
-  <b>Your keys · your data · your machine.</b> No account, no subscription, no one reading your chats.
+  <b>Your keys · your data · your machine.</b>
+  No account. No subscription. No one reading your chats.
+</p>
+
+<p align="center">
+  <a href="#-run-it-one-command"><b>One Docker command → localhost:7788</b></a>
 </p>
 
 <p align="center">
@@ -40,9 +44,6 @@
   <a href="#-vs-the-hosted-apps">vs. Replika/Nomi</a> ·
   <a href="#%EF%B8%8F-safety--responsible-self-hosting">Safety</a></sub>
 </p>
-
-> ⭐ **Star the repo** to get release notifications — new personas, models, and
-> features land often, and GitHub will tell you the moment they do.
 
 ---
 
@@ -78,7 +79,7 @@ pip install "git+https://github.com/ericwang915/HerAndHim.git"
 # From a local clone (contributors — editable install)
 git clone https://github.com/ericwang915/HerAndHim.git && cd HerAndHim
 pip install -e ".[all]"         # extras: cloud (S3), twitter, all
-pytest tests/                   # 208 tests
+pytest tests/
 
 # docker compose
 cp deploy/local/.env.example deploy/local/.env   # add your key
@@ -246,15 +247,34 @@ ever leaves your machine. Skip them entirely and everything else still works.
 
 ## 🆚 vs. the hosted apps
 
+Replika, Nomi, and Character.AI are polished products. They also keep your
+chats on their servers, pick the model for you, and put the features that
+make a companion *feel* like one behind a subscription.
+
+HerAndHim is the other bet: **you run it, you bring the model, the memories
+stay on your disk.** Telegram is the phone client. There is no official
+iOS/Android app, and the web dashboard is early (functional, not fancy).
+
 | | HerAndHim | Replika | Nomi | Character.AI |
 |---|:---:|:---:|:---:|:---:|
-| Self-hosted, your data | ✅ | ❌ | ❌ | ❌ |
-| Your own API keys / model | ✅ any | ❌ | ❌ | ❌ |
-| Runs on Telegram | ✅ | ❌ | ❌ | ❌ |
-| AI selfies, consistent face | ✅ | 💰 | ✅ | ❌ |
-| Lives a daily life (city/weather) | ✅ | ❌ | ❌ | ❌ |
-| Open source | ✅ AGPL | ❌ | ❌ | ❌ |
-| Price | **free** | $20/mo | $16/mo | $10/mo |
+| Self-hosted — chats stay on your disk | ✅ | ❌ | ❌ | ❌ |
+| Your own API keys / local models | ✅ any | ❌ | ❌ | ❌ |
+| How you talk on a phone | Telegram or browser | their app | their app | their app |
+| Face-consistent AI selfies | ✅ | paid tier | ✅ | ❌ |
+| Daily life grounded in a city + weather | ✅ | ❌ | ❌ | ❌ |
+| License | AGPL-3.0 | closed | closed | closed |
+| What you pay | **your API bill** (or run local) | ~$20/mo Pro | ~$16/mo | ~$10/mo c.ai+ |
+
+Hosted prices are typical public list rates and change by region. The
+software here is free (AGPL-3.0); tokens are not, unless you point it at
+[Ollama](https://ollama.com) or another local model.
+
+**Stay on a hosted app** if you want a one-tap App Store install, voice
+calls, and someone else to operate the stack.
+
+**Use this** if you want a companion whose memory and photos never leave a
+machine you control, and you're willing to paste one API key (or point it
+at a local model).
 
 ---
 
@@ -461,7 +481,7 @@ HerAndHim/
 │   │   └── heartbeat.py         # heartbeat monitor
 │   ├── web/                     # FastAPI dashboard + WebSocket chat
 │   └── templates/               # built-in persona / soul / skills
-├── tests/                       # 208 tests
+├── tests/
 ├── pyproject.toml
 └── LICENSE
 ```
@@ -510,12 +530,25 @@ anti-dark-pattern design decisions.
 
 ### Status
 
-**v0.1.0 — early but real.** Runs daily on the maintainer's own machine. The
+**v0.2.0 — early but real.** Runs daily on the maintainer's own machine. The
 companion engine (memory, daily life, photos, humanized delivery) is stable;
 the web dashboard is functional but plain. Expect rough edges in setup.
 
-Roadmap: local-model (Ollama) first-class support · voice notes both directions ·
-a desktop avatar mode · more languages. Ideas and issues welcome.
+Roadmap: richer local-model UX · voice notes both directions · a desktop
+avatar mode · more languages. Ideas and issues welcome.
+
+---
+
+## ⭐ Share this
+
+HerAndHim is found by stars and word of mouth, not ads. If a privacy-first
+companion is what you wanted the hosted apps to be, [star the
+repo](https://github.com/ericwang915/HerAndHim) — that's how the next person
+finds it. GitHub will also ping you when new personas, models, or features
+land.
+
+Writing it up on HN, Reddit, 即刻, V2EX, or a group chat? A link plus *why
+you self-host* is enough. No need to oversell.
 
 ---
 

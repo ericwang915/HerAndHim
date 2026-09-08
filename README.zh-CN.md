@@ -5,13 +5,17 @@
 <h1 align="center">HerAndHim 🐾💕</h1>
 
 <p align="center">
-  <strong>一个有自己生活的自托管 AI 伴侣。</strong>
+  <strong>自托管的 AI 男友 / 女友 —— 在真实城市里过自己的一天，<br>
+  记得你在意的事，自拍永远是同一张脸。</strong>
 </p>
 
 <p align="center">
-  她在真实城市里过着有作息的一天，记得你在意的事，<br>
-  像真人一样发消息，自拍里永远是同一张脸。<br>
-  <b>你的 key · 你的数据 · 你的机器。</b>不用注册、不用订阅、没人看你的聊天记录。
+  <b>你的 key · 你的数据 · 你的机器。</b>
+  不用注册、不用订阅、没人看你的聊天记录。
+</p>
+
+<p align="center">
+  <a href="#-一条命令跑起来"><b>一条 Docker 命令 → localhost:7788</b></a>
 </p>
 
 <p align="center">
@@ -29,9 +33,17 @@
     <img src="https://img.shields.io/badge/license-AGPL--3.0-blue" alt="AGPL-3.0">
   </a>
   <img src="https://img.shields.io/badge/python-3.10%2B-blue" alt="Python 3.10+">
+  <a href="https://github.com/ericwang915/HerAndHim/pkgs/container/herandhim">
+    <img src="https://img.shields.io/badge/ghcr.io-herandhim-2496ED?logo=docker&logoColor=white" alt="Docker image">
+  </a>
 </p>
 
-> ⭐ **点个 Star** 就能收到发布通知 —— 新人设、新模型、新功能上线时 GitHub 会第一时间告诉你。
+<p align="center">
+  <sub><a href="#-一条命令跑起来">跑起来</a> ·
+  <a href="#-为什么她像个真人">为什么像真人</a> ·
+  <a href="#-和托管型产品比">对比 Replika/Nomi</a> ·
+  <a href="#%EF%B8%8F-安全与自托管责任">安全</a></sub>
+</p>
 
 ---
 
@@ -62,7 +74,7 @@ pip install "git+https://github.com/ericwang915/HerAndHim.git"
 # 从本地 clone 装（贡献者用，可编辑模式）
 git clone https://github.com/ericwang915/HerAndHim.git && cd HerAndHim
 pip install -e ".[all]"         # 可选 extras：cloud（S3）、twitter、all
-pytest tests/                   # 208 个测试
+pytest tests/
 
 # docker compose
 cp deploy/local/.env.example deploy/local/.env   # 填上你的 key
@@ -168,15 +180,25 @@ key 默认沿用该厂商自己的配置，一般填 provider + model 就够了�
 
 ## 🆚 和托管型产品比
 
+Replika、Nomi、Character.AI 都是更成品的产品。它们也把聊天记录放在自己的服务器上，模型由它们选，让伴侣「像个人」的功能往往要订阅。
+
+HerAndHim 押的是另一边：**你自己跑、你自带模型、记忆留在你的磁盘上。** 手机端走 Telegram。没有官方 iOS/Android 客户端，网页面板能用但朴素。
+
 | | HerAndHim | Replika | Nomi | Character.AI |
 |---|:---:|:---:|:---:|:---:|
-| 自托管、数据归你 | ✅ | ❌ | ❌ | ❌ |
-| 用你自己的 key / 模型 | ✅ 任意 | ❌ | ❌ | ❌ |
-| 跑在 Telegram 上 | ✅ | ❌ | ❌ | ❌ |
-| AI 自拍、人脸一致 | ✅ | 💰 | ✅ | ❌ |
-| 有真实生活（城市/天气） | ✅ | ❌ | ❌ | ❌ |
-| 开源 | ✅ AGPL | ❌ | ❌ | ❌ |
-| 价格 | **免费** | $20/月 | $16/月 | $10/月 |
+| 自托管 — 聊天留在你磁盘上 | ✅ | ❌ | ❌ | ❌ |
+| 用你自己的 key / 本地模型 | ✅ 任意 | ❌ | ❌ | ❌ |
+| 手机上怎么聊 | Telegram 或浏览器 | 自家 App | 自家 App | 自家 App |
+| 人脸一致的 AI 自拍 | ✅ | 付费档 | ✅ | ❌ |
+| 有真实生活（城市 + 天气） | ✅ | ❌ | ❌ | ❌ |
+| 许可证 | AGPL-3.0 | 闭源 | 闭源 | 闭源 |
+| 你付什么 | **你的 API 账单**（或本地跑） | 约 $20/月 Pro | 约 $16/月 | 约 $10/月 c.ai+ |
+
+托管产品标价是常见公开价，会随地区变化。「免费」指的是这份代码，不是说 token 不要钱。
+
+**继续用托管 App**，如果你要的是应用商店一键安装、语音通话、以及有人替你运维。
+
+**用这个**，如果你要一个记忆和照片都不离开你能控制的机器的伴侣，并且愿意粘贴一个 API key（或指向本地模型）。DeepSeek、通义千问、智谱、硅基流动都已内置。
 
 ---
 
@@ -198,9 +220,17 @@ HerAndHim 是**面向成年人（18+）的关系模拟引擎** —— 一个情�
 
 ### 项目状态
 
-**v0.1.0 —— 早期但可用。** 作者本人每天在自己机器上跑。伴侣引擎（记忆、日常生活、照片、拟人化交付）已稳定；网页面板功能完整但朴素。安装过程可能还有毛刺。
+**v0.2.0 —— 早期但可用。** 作者本人每天在自己机器上跑。伴侣引擎（记忆、日常生活、照片、拟人化交付）已稳定；网页面板功能完整但朴素。安装过程可能还有毛刺。
 
-路线图：Ollama 本地模型一等公民支持 · 双向语音条 · 桌面虚拟形象 · 更多语言。欢迎提 issue 和想法。
+路线图：更好的本地模型体验 · 双向语音条 · 桌面虚拟形象 · 更多语言。欢迎提 issue 和想法。
+
+---
+
+## ⭐ 让更多人看到
+
+HerAndHim 靠 Star 和口碑被找到，不打广告。如果这就是你希望托管 App 变成的样子，[给仓库点个 Star](https://github.com/ericwang915/HerAndHim) —— 下一个人就是这样看见它的。新人设、新模型、新功能发布时，GitHub 也会通知你。
+
+要写到 HN、Reddit、即刻、V2EX 或群里？丢一个链接，再写一句**你为什么选择自托管**就够了，不必吹。
 
 ---
 
