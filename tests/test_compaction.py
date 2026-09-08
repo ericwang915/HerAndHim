@@ -11,7 +11,11 @@ from herandhim.core.compaction import (
     persist_compaction,
     compact,
     memory_flush,
+    build_summary_prompt,
+    _cap_summary,
     CHARS_PER_TOKEN,
+    MAX_SUMMARY_CHARS,
+    SUMMARY_SECTIONS,
 )
 
 
@@ -259,6 +263,92 @@ class TestMemoryFlush:
         mem = MagicMock()
         result = memory_flush(chat_messages(4), provider, mem)
         assert result == 0
+
+
+# ── Companion-structured summary ─────────────────────────────────────────────
+
+STRUCTURED_SUMMARY = (
+    "## Relationship thread\n- calls the user 'bao', playful teasing tone\n"
+    "## User facts (confirmed)\n- birthday is March 3\n- lives in Shanghai\n"
+    "## Open plans & dates\n- aquarium date planned for Saturday\n"
+    "## Emotional tone\n- user stressed about work, companion reassuring\n"
+    "## Pending asks & promises\n- companion promised to pick a restaurant\n"
+    "## Do-not-lose\n- (none)\n"
+)
+
+
+class TestStructuredSummary:
+    def test_prompt_contains_all_mandatory_sections(self, tmp_path):
+        provider = make_provider(summary=STRUCTURED_SUMMARY)
+        compact(
+            messages=[{"role": "system", "content": "sys"}] + chat_messages(10),
+            provider=provider,
+            recent_keep=4,
+            log_path=str(tmp_path / "h.jsonl"),
+        )
+        sent_prompt = provider.chat.call_args.kwargs["messages"][0]["content"]
+        for name, _hint in SUMMARY_SECTIONS:
+            assert f"## {name}" in sent_prompt
+
+    def test_prompt_caps_section_length(self):
+        prompt = build_summary_prompt("USER: hi")
+        assert "at most 3 short bullets" in prompt
+        assert "(none)" in prompt
+
+    def test_instruction_included_in_prompt(self, tmp_path):
+        provider = make_provider()
+        compact(
+            messages=[{"role": "system", "content": "sys"}] + chat_messages(10),
+            provider=provider,
+            recent_keep=4,
+            instruction="keep the trip details",
+            log_path=str(tmp_path / "h.jsonl"),
+        )
+        sent_prompt = provider.chat.call_args.kwargs["messages"][0]["content"]
+        assert "keep the trip details" in sent_prompt
+
+    def test_relationship_details_survive_repeated_compaction(self, tmp_path):
+        """Forced compact cycles: birthday + open plan + nickname must survive."""
+        provider = make_provider(summary=STRUCTURED_SUMMARY)
+        messages = [{"role": "system", "content": "sys"}] + chat_messages(10)
+
+        for cycle in range(2):
+            messages, _ = compact(
+                messages=messages,
+                provider=provider,
+                recent_keep=4,
+                log_path=str(tmp_path / f"h{cycle}.jsonl"),
+            )
+            # Pad with fresh chat so the next cycle has something to compact
+            messages = messages + chat_messages(10)
+
+        all_system_text = "\n".join(
+            m["content"] for m in messages if m.get("role") == "system"
+        )
+        assert "birthday is March 3" in all_system_text
+        assert "aquarium date planned for Saturday" in all_system_text
+        assert "'bao'" in all_system_text
+
+    def test_oversized_summary_truncated(self, tmp_path):
+        huge = "\n".join(f"- bullet {i}: " + "x" * 80 for i in range(200))
+        provider = make_provider(summary=huge)
+        new_msgs, summary = compact(
+            messages=[{"role": "system", "content": "sys"}] + chat_messages(10),
+            provider=provider,
+            recent_keep=4,
+            log_path=str(tmp_path / "h.jsonl"),
+        )
+        assert len(summary) <= MAX_SUMMARY_CHARS + len("\n…(truncated)")
+        assert summary.endswith("…(truncated)")
+
+    def test_cap_keeps_short_summary_intact(self):
+        assert _cap_summary(STRUCTURED_SUMMARY) == STRUCTURED_SUMMARY
+
+    def test_cap_breaks_on_line_boundary(self):
+        long = "\n".join("line " + "y" * 60 for _ in range(100))
+        capped = _cap_summary(long)
+        assert len(capped) <= MAX_SUMMARY_CHARS + len("\n…(truncated)")
+        assert capped.endswith("…(truncated)")
 
 
 # ── Agent.compact() integration ──────────────────────────────────────────────

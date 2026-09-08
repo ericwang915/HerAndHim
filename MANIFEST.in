@@ -2,7 +2,7 @@ include LICENSE README.md README.zh-CN.md SAFETY.md SECURITY.md
 # *.md and *.jpg matter at runtime: the bundled personas, souls and skills are
 # Markdown, and the dashboard ships a default hero image. Omitting them built
 # an sdist that installed a companion with no personality.
-recursive-include herandhim *.py *.md *.html *.css *.js *.png *.jpg *.ico *.yaml *.yml *.sh
+recursive-include herandhim *.py *.md *.html *.css *.js *.png *.jpg *.ico *.yaml *.yml *.sh *.json
 recursive-include tests *.py
 
 exclude herandhim.json

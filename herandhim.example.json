@@ -70,7 +70,8 @@
     "alertChatId": null
   },
   "memory": {
-    "dir": null
+    "dir": null,
+    "consolidation": true
   },
   "storage": {
     "eventsRetentionDays": 90,
@@ -127,7 +128,8 @@
     "comfyui": {
       "baseUrl": "http://localhost:8188",
       "checkpoint": "sd_xl_base_1.0.safetensors",
-      "workflow": ""
+      "workflow": "",
+      "identityWorkflow": ""
     },
     "custom": {
       "apiKey": "",

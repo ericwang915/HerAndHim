@@ -386,6 +386,26 @@ enough. With nothing set, a Gemini key alone still gives her vision.
 
 ---
 
+## 🧠 Memory & compaction
+
+Long-term memory is plain Markdown under `~/.herandhim/context/memory/`.
+Writes are **consolidated at write time**: before a new fact is saved, the most
+similar existing memories are retrieved and one small LLM call decides whether
+to add it, update an existing entry, delete an invalidated one, or skip a
+duplicate — so "just moved to Shanghai" updates the one current city instead of
+stacking a contradiction under a freshly invented key. Any failure falls back
+to a plain write, and you can turn it off with `memory.consolidation: false`
+(or `HERANDHIM_MEMORY_CONSOLIDATION=false`).
+
+When a long conversation is compacted, durable facts are first flushed to
+memory, then the older messages are replaced by a **structured summary** with
+mandatory sections — relationship thread · user facts (confirmed) · open plans
+& dates · emotional tone · pending asks & promises · do-not-lose — so open
+plans, nicknames, and promises survive compact chains instead of eroding into a
+generic paragraph. Recent messages are always kept verbatim.
+
+---
+
 ## 📷 AI selfies
 
 **Thirteen backends** — set one key and the right one is picked
@@ -404,7 +424,7 @@ automatically, or name it explicitly with `skills.image.provider` /
 | **`replicate`** | `black-forest-labs/flux-schnell` | `HERANDHIM_REPLICATE_API_TOKEN` | — |
 | **`stability`** | `core` | `HERANDHIM_STABILITY_API_KEY` | — |
 | **`dashscope`** | `wan2.2-t2i-flash` | `HERANDHIM_DASHSCOPE_API_KEY` | — |
-| **`comfyui`** | your workflow | *none* | — |
+| **`comfyui`** | your workflow | *none* | ✅ with `identityWorkflow` |
 | **`sdwebui`** | your checkpoint | *none* | — |
 | **`custom`** | yours | `HERANDHIM_IMAGE_API_KEY` | ✅ |
 
@@ -422,11 +442,26 @@ machine**. ComfyUI runs the built-in workflow by default, or point
 that instead (`%prompt%`, `%negative%`, `%seed%`, `%width%`, `%height%`,
 `%model%` get substituted).
 
+**Local face consistency (ComfyUI identity workflows).** Set
+`skills.comfyui.identityWorkflow` (or `HERANDHIM_COMFYUI_IDENTITY_WORKFLOW`) to
+`flux-pulid` or `sdxl-instantid` and her reference portrait is injected into a
+bundled PuLID / InstantID graph — same face across shots, nothing leaves your
+machine. This needs the matching node pack installed in ComfyUI
+([ComfyUI-PuLID-Flux](https://github.com/balazik/ComfyUI-PuLID-Flux) or
+[ComfyUI_InstantID](https://github.com/cubiq/ComfyUI_InstantID)) plus its
+models; the pinned filenames are listed in
+[`herandhim/templates/comfyui/README.md`](herandhim/templates/comfyui/README.md).
+If the identity nodes aren't installed, HerAndHim logs a warning and falls back
+to plain generation instead of failing the photo. You can also point
+`identityWorkflow` at your own exported API-format graph — `%reference%` is
+substituted with the uploaded face reference. `sdwebui` stays best-effort
+(stable seed + appearance description); for local face anchoring use ComfyUI.
+
 If you care most about **her looking like the same person every time**, use a
 backend with reference-image support — `bfl` (FLUX.1 Kontext is built for
-exactly this), `seedream`, `openai`, `gemini`, or `openrouter`. The rest still
-generate; they just lean on the stable seed and the appearance description
-instead of a face anchor.
+exactly this), `seedream`, `openai`, `gemini`, `openrouter`, or local `comfyui`
+with an identity workflow (above). The rest still generate; they just lean on
+the stable seed and the appearance description instead of a face anchor.
 
 Aggregators that speak the OpenAI image API (Together, DeepInfra, Novita,
 SiliconFlow, Fireworks…) need no dedicated backend — point `custom` at them.

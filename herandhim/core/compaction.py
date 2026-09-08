@@ -14,8 +14,11 @@ How it works
 2. Memory flush — silently ask the LLM to extract key facts from the old
    messages and persist them via the agent's `remember` tool, so nothing
    important is lost permanently.
-3. Summarise — call the LLM with a summarisation prompt to produce a concise
-   paragraph covering decisions, facts, tasks, and open questions.
+3. Summarise — call the LLM with a structured, companion-oriented prompt.
+   The summary has mandatory sections (relationship thread, confirmed user
+   facts, open plans & dates, emotional tone, pending asks & promises,
+   do-not-lose) so relationship continuity survives repeated compactions
+   instead of eroding into a generic paragraph.
 4. Persist — append the summary to `context/compaction/history.jsonl` as an
    audit trail.
 5. Replace — swap the old messages with a single [Compaction Summary] system
@@ -45,6 +48,29 @@ logger = logging.getLogger(__name__)
 CHARS_PER_TOKEN = 4
 DEFAULT_AUTO_THRESHOLD_TOKENS = 10000  # trigger auto-compaction at ~10k tokens
 DEFAULT_RECENT_KEEP = 6                # keep last N chat messages verbatim
+
+# Mandatory sections of the companion-structured summary. Freeform "3–8
+# sentence" summaries lose exactly the things a partner would never forget —
+# open plans, nicknames, promises — so each compaction is forced to account
+# for them explicitly.
+SUMMARY_SECTIONS: list[tuple[str, str]] = [
+    ("Relationship thread",
+     "where things stand between you two — running jokes, nicknames in use, "
+     "how you talk to each other"),
+    ("User facts (confirmed)",
+     "stable facts the user stated: name, city, job, birthday, family, health"),
+    ("Open plans & dates",
+     "anything scheduled, promised or anticipated, with dates/times"),
+    ("Emotional tone",
+     "the user's recent mood and how you have been responding to it"),
+    ("Pending asks & promises",
+     "questions still awaiting an answer; things either of you said you'd do"),
+    ("Do-not-lose",
+     "anything else it would be jarring for a partner to forget"),
+]
+
+# Hard cap so structured summaries can't balloon across compact chains.
+MAX_SUMMARY_CHARS = 3000
 def _compaction_log_file() -> str:
     from .. import config as _cfg
     return os.path.join(str(_cfg.HERANDHIM_HOME), "context", "compaction", "history.jsonl")
@@ -92,6 +118,44 @@ def messages_to_text(messages: list[dict]) -> str:
         if content:
             lines.append(f"{role.upper()}: {content}")
     return "\n".join(lines)
+
+
+# ── Structured summary prompt ─────────────────────────────────────────────────
+
+def build_summary_prompt(history_text: str, focus: str = "") -> str:
+    """Build the companion-structured summarisation prompt.
+
+    Every section is mandatory (write "(none)" when empty) and capped at a few
+    short bullets, so summaries stay both complete and small.
+    """
+    sections = "\n".join(
+        f"## {name}\n({hint})" for name, hint in SUMMARY_SECTIONS
+    )
+    return (
+        "You are compacting the older chat history between an AI companion and "
+        "their partner. Produce a structured summary with EXACTLY the sections "
+        "below, in this order, using the exact '## ' headings. Under each "
+        "heading write at most 3 short bullets (each under 25 words). If a "
+        f"section has nothing, write '(none)'.{focus}\n\n"
+        f"{sections}\n\n"
+        f"CONVERSATION:\n{history_text}\n\n"
+        "Return only the structured summary:"
+    )
+
+
+def _cap_summary(summary: str) -> str:
+    """Hard-cap summary length so compact chains can't balloon the context."""
+    if len(summary) <= MAX_SUMMARY_CHARS:
+        return summary
+    cut = summary[:MAX_SUMMARY_CHARS]
+    # Break on a line boundary when one is reasonably close.
+    nl = cut.rfind("\n")
+    if nl > MAX_SUMMARY_CHARS // 2:
+        cut = cut[:nl]
+    logger.warning(
+        "[Compaction] Summary exceeded %d chars — truncated.", MAX_SUMMARY_CHARS
+    )
+    return cut.rstrip() + "\n…(truncated)"
 
 
 # ── Memory flush ──────────────────────────────────────────────────────────────
@@ -193,22 +257,17 @@ def compact(
     if memory is not None:
         memory_flush(to_summarise, provider, memory)
 
-    # 2. Summarise
+    # 2. Summarise — structured so relationship continuity survives the chain
     history_text = messages_to_text(to_summarise)
     focus = f"\nAdditional focus: {instruction}" if instruction else ""
-    summarise_prompt = (
-        f"Summarise the following conversation history concisely. "
-        f"Focus on: decisions made, key facts learned, tasks completed, open questions.{focus}\n\n"
-        f"CONVERSATION:\n{history_text}\n\n"
-        f"Provide a compact summary (3–8 sentences or bullet points):"
-    )
+    summarise_prompt = build_summary_prompt(history_text, focus)
     try:
         response = provider.chat(
             messages=[{"role": "user", "content": summarise_prompt}],
             tools=[],
             tool_choice="none",
         )
-        summary = (response.choices[0].message.content or "").strip()
+        summary = _cap_summary((response.choices[0].message.content or "").strip())
     except Exception as exc:
         logger.error("[Compaction] Summarisation failed: %s", exc)
         raise

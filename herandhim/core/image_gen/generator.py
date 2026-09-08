@@ -88,6 +88,34 @@ PROVIDERS: dict[str, tuple[str, str, str, bool]] = {
 # Backends that run locally or need no account.
 KEYLESS = {"sdwebui", "comfyui", "pollinations"}
 
+# Bundled ComfyUI identity workflows (see herandhim/templates/comfyui/).
+# ``skills.comfyui.identityWorkflow`` selects one by alias, or points at a
+# user-exported API-format graph with a %reference% placeholder.
+IDENTITY_WORKFLOWS: dict[str, str] = {
+    "flux-pulid": "flux_pulid.json",
+    "pulid": "flux_pulid.json",
+    "sdxl-instantid": "sdxl_instantid.json",
+    "instantid": "sdxl_instantid.json",
+}
+
+
+def _identity_workflow_path() -> str:
+    """Resolve the configured ComfyUI identity workflow to a file path.
+
+    Returns "" when no identity workflow is configured (reference images are
+    then ignored for comfyui, as before).
+    """
+    name = _cfg("comfyui", "identityWorkflow",
+                env="HERANDHIM_COMFYUI_IDENTITY_WORKFLOW").strip()
+    if not name:
+        return ""
+    bundled = IDENTITY_WORKFLOWS.get(name.lower())
+    if bundled:
+        pkg_root = os.path.dirname(os.path.dirname(os.path.dirname(
+            os.path.abspath(__file__))))
+        return os.path.join(pkg_root, "templates", "comfyui", bundled)
+    return name  # a path to the user's own graph
+
 
 class SeedreamError(RuntimeError):
     """Image generation failed. (Name kept for backwards compatibility.)"""
@@ -234,6 +262,10 @@ class SeedreamGenerator:
         mdl = model or self.model
         _env, _base, _dm, supports_ref = PROVIDERS.get(self.provider,
                                                        PROVIDERS["custom"])
+        # Local ComfyUI gains reference support when an identity workflow
+        # (PuLID / InstantID) is configured — see templates/comfyui/.
+        if self.provider == "comfyui" and _identity_workflow_path():
+            supports_ref = True
         if reference_image and not supports_ref:
             logger.info("[image] %s has no reference-image support — "
                         "generating without one (face may drift)", self.provider)
@@ -541,21 +573,100 @@ class SeedreamGenerator:
               "inputs": {"filename_prefix": "HerAndHim", "images": ["8", 0]}},
     }
 
+    def _comfy_upload_reference(self, reference_image: str) -> str | None:
+        """Upload the face reference to ComfyUI's input folder.
+
+        Returns the server-side filename to feed a LoadImage node, or None on
+        failure (the caller then generates without a reference).
+        """
+        try:
+            with open(reference_image, "rb") as f:
+                blob = f.read()
+            mime = mimetypes.guess_type(reference_image)[0] or "image/jpeg"
+            data = self._post(
+                f"{self.base_url}/upload/image", headers={},
+                files={"image": (os.path.basename(reference_image), blob, mime)},
+                data={"overwrite": "true"},
+            )
+        except (OSError, SeedreamError) as exc:
+            logger.warning("[image] comfyui reference upload failed: %s", exc)
+            return None
+        name = data.get("name")
+        if not name:
+            logger.warning("[image] comfyui upload returned no filename: %s", data)
+            return None
+        subfolder = data.get("subfolder") or ""
+        return f"{subfolder}/{name}" if subfolder else name
+
+    def _comfy_identity_graph(self, reference_image: str):
+        """Load the configured identity workflow and upload the reference.
+
+        Returns ``(graph, uploaded_name)`` or ``None`` to fall back to the
+        plain text-to-image path. Skip-if-missing: when the server doesn't
+        have the required custom nodes (PuLID / InstantID not installed), we
+        log and fall back rather than fail the photo.
+        """
+        import json as _json
+
+        path = _identity_workflow_path()
+        if not path:
+            return None
+        if not os.path.isfile(path):
+            raise SeedreamError(f"ComfyUI identity workflow not found: {path}")
+        with open(path) as f:
+            graph = _json.load(f)
+
+        # Skip-if-missing: check every class_type against the server's node
+        # catalogue. An unreachable/odd /object_info is not fatal — the job
+        # submission will surface real errors.
+        required = {node.get("class_type") for node in graph.values()}
+        try:
+            available = set(self._get(f"{self.base_url}/object_info").json())
+            missing = sorted(c for c in required if c and c not in available)
+            if missing:
+                logger.warning(
+                    "[image] comfyui is missing identity nodes %s — install the "
+                    "PuLID/InstantID node pack; generating without a face "
+                    "reference (face may drift)", missing)
+                return None
+        except (SeedreamError, ValueError) as exc:
+            logger.debug("[image] comfyui node check skipped: %s", exc)
+
+        uploaded = self._comfy_upload_reference(reference_image)
+        if not uploaded:
+            return None
+        return graph, uploaded
+
     def _gen_comfyui(self, prompt, *, size, n, seed, reference_image, model):
         """ComfyUI running locally — where most self-hosted image generation
         actually happens now. Like sdwebui, nothing leaves the machine, but
-        this one can run whatever workflow you've already tuned."""
+        this one can run whatever workflow you've already tuned. With an
+        identity workflow configured (skills.comfyui.identityWorkflow), the
+        face reference is injected locally via PuLID/InstantID."""
         import copy
         import json as _json
 
         w, h = _dimensions(size)
-        graph = copy.deepcopy(self._COMFY_WORKFLOW)
-        custom = _cfg("comfyui", "workflow")
-        if custom:
-            if not os.path.isfile(custom):
-                raise SeedreamError(f"ComfyUI workflow not found: {custom}")
-            with open(custom) as f:
-                graph = _json.load(f)
+        graph = None
+        ref_name: str | None = None
+        prebuilt = False  # identity/custom graphs manage their own dimensions
+
+        if reference_image:
+            identity = self._comfy_identity_graph(reference_image)
+            if identity is not None:
+                graph, ref_name = identity
+                prebuilt = True
+
+        if graph is None:
+            custom = _cfg("comfyui", "workflow")
+            if custom:
+                if not os.path.isfile(custom):
+                    raise SeedreamError(f"ComfyUI workflow not found: {custom}")
+                with open(custom) as f:
+                    graph = _json.load(f)
+                prebuilt = True
+            else:
+                graph = copy.deepcopy(self._COMFY_WORKFLOW)
 
         # Substitute into whichever graph we ended up with — placeholders let
         # a hand-tuned workflow take the same inputs as the built-in one.
@@ -568,14 +679,16 @@ class SeedreamGenerator:
                                      default="sd_xl_base_1.0.safetensors"),
             "%width%": w, "%height%": h, "%seed%": seed if seed is not None else 0,
         }
+        if ref_name:
+            subs["%reference%"] = ref_name
         for node in graph.values():
             for field, val in (node.get("inputs") or {}).items():
                 if isinstance(val, str) and val in subs:
                     node["inputs"][field] = subs[val]
             cls = node.get("class_type")
-            if cls == "EmptyLatentImage" and not custom:
+            if cls == "EmptyLatentImage" and not prebuilt:
                 node["inputs"].update({"width": w, "height": h, "batch_size": n})
-            elif cls == "KSampler" and seed is not None and not custom:
+            elif cls == "KSampler" and seed is not None and not prebuilt:
                 node["inputs"]["seed"] = seed
 
         submitted = self._post(f"{self.base_url}/prompt",
