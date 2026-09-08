@@ -18,6 +18,9 @@ When writing, both MEMORY.md and today's daily log are updated.
 When reading, MEMORY.md is the source of truth (holds latest per key).
 Conflict resolution: if the same key is written multiple times, the most
 recent write wins (MEMORY.md is always overwritten with the latest value).
+When a provider is attached, remember() additionally runs write-time
+consolidation (see consolidation.py) so near-duplicate keys and
+contradictions are merged instead of stacking.
 
 Per-group isolation
 -------------------
@@ -62,6 +65,10 @@ class MemoryManager:
                         global stores.  Writes always go to local only.
     use_dense         : include embedding retrieval for recall (False by default
                         — BM25 alone is fast and sufficient for small corpora).
+    provider          : optional LLMProvider; when set, remember() consolidates
+                        each write against similar existing memories (Mem0-lite).
+                        Disable with memory.consolidation=false or
+                        HERANDHIM_MEMORY_CONSOLIDATION=false.
     """
 
     def __init__(
@@ -69,12 +76,20 @@ class MemoryManager:
         memory_dir: str | None = None,
         global_memory_dir: str | None = None,
         use_dense: bool = False,
+        provider=None,
     ) -> None:
         import os as _os
 
+        from ... import config as _cfg
+
         if memory_dir is None:
-            from ... import config as _cfg
             memory_dir = _os.path.join(str(_cfg.HERANDHIM_HOME), "context", "memory")
+
+        self._provider = provider
+        self._consolidation_enabled = _cfg.get_bool(
+            "memory", "consolidation",
+            env="HERANDHIM_MEMORY_CONSOLIDATION", default=True,
+        )
 
         self.storage = MemoryStorage(memory_dir)
         self._global_storage: MemoryStorage | None = None
@@ -110,11 +125,34 @@ class MemoryManager:
     # ── Core operations ──────────────────────────────────────────────────────
 
     def remember(self, content: str, key: str | None = None) -> str:
-        """Store *content* under *key* in local (group) memory."""
+        """Store *content* under *key* in local (group) memory.
+
+        When a provider is attached (and consolidation isn't disabled), the
+        write is first reconciled against similar existing memories so that
+        contradictions get merged (UPDATE), retractions delete (DELETE), and
+        duplicates are dropped (NOOP) instead of stacking under new keys.
+        """
         if not key:
             raise ValueError("Key is required for memory storage.")
+
+        if self._provider is not None and self._consolidation_enabled:
+            from .consolidation import consolidate
+            op = consolidate(key, content, self.storage.list_all(), self._provider)
+            return self._apply_op(op)
+
         self.storage.set(key, content)
         return f"Memory stored: [{key}] = {content}"
+
+    def _apply_op(self, op) -> str:
+        """Apply a consolidation MemoryOp to local storage."""
+        if op.op == "NOOP":
+            return f"Memory unchanged: [{op.key}] already known."
+        if op.op == "DELETE":
+            self.storage.delete(op.key)
+            return f"Memory removed: [{op.key}]"
+        self.storage.set(op.key, op.value)
+        verb = "updated" if op.op == "UPDATE" else "stored"
+        return f"Memory {verb}: [{op.key}] = {op.value}"
 
     def recall(self, query: str, top_k: int = 10) -> str:
         """

@@ -241,7 +241,9 @@ class Agent:
         global_mem_dir: str | None = None
         if session_id and config.per_group_isolation():
             global_mem_dir = os.path.join(str(config.HERANDHIM_HOME), "context", "memory")
-        self.memory = MemoryManager(mem_dir, global_memory_dir=global_mem_dir)
+        self.memory = MemoryManager(
+            mem_dir, global_memory_dir=global_mem_dir, provider=provider,
+        )
 
         # Knowledge RAG (hybrid retrieval) — use shared singleton if provided
         self.rag: KnowledgeRAG | None = rag
