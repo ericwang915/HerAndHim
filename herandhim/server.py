@@ -145,6 +145,13 @@ async def start_telegram(
     # ── 2. Register Daily Planner (always, regardless of Telegram status) ────
     register_daily_planner(scheduler._scheduler, provider)
 
+    # ── 2b. Register overnight memory consolidation (opt-in) ─────────────────
+    try:
+        from .scheduler.overnight import register_overnight_consolidation
+        register_overnight_consolidation(scheduler._scheduler, provider, session_manager)
+    except Exception as exc:
+        logger.warning("[HerAndHim] Overnight consolidation setup failed: %s", exc)
+
     # ── 3. Generate today's plan immediately if stale ───────────────────────
     if plan_is_stale():
         logger.info("[HerAndHim] Plan is stale or missing — generating now.")

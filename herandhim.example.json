@@ -71,7 +71,10 @@
   },
   "memory": {
     "dir": null,
-    "consolidation": true
+    "consolidation": true,
+    "overnightConsolidation": false,
+    "overnightHour": 3,
+    "overnightArchiveDays": 0
   },
   "storage": {
     "eventsRetentionDays": 90,
