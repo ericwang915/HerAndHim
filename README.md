@@ -397,6 +397,21 @@ stacking a contradiction under a freshly invented key. Any failure falls back
 to a plain write, and you can turn it off with `memory.consolidation: false`
 (or `HERANDHIM_MEMORY_CONSOLIDATION=false`).
 
+On top of that there's an optional **overnight consolidation** pass — a
+quiet-hours cron job (03:30 local by default) that sweeps each memory store
+with the same merge protocol: recently-updated entries are compared against
+the rest of the store, duplicates get merged into one key, and invalidated
+entries are moved to `ARCHIVE.md` in the same directory — never hard-deleted.
+System keys (name, profile, onboarding state, …) are never touched, LLM usage
+is capped per night, and any failure is a logged no-op that leaves `MEMORY.md`
+intact. A short report of what happened lands in the daemon log and in
+`context/logs/overnight_consolidation.md`. It's **off by default** — enable
+with `memory.overnightConsolidation: true` (or
+`HERANDHIM_MEMORY_OVERNIGHT_CONSOLIDATION=true`); tune the run hour with
+`memory.overnightHour` (default `3`) and opt into age-based archiving of
+entries untouched for N days with `memory.overnightArchiveDays` (default `0`
+= never archive by age).
+
 When a long conversation is compacted, durable facts are first flushed to
 memory, then the older messages are replaced by a **structured summary** with
 mandatory sections — relationship thread · user facts (confirmed) · open plans
