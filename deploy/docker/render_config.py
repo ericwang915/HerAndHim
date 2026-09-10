@@ -24,7 +24,9 @@ Env vars (the container's ``.env.example`` documents them all):
   HERANDHIM_IMAGE_PROVIDER / HERANDHIM_IMAGE_MODEL    selfies, backend inferred
   HERANDHIM_<BACKEND>_API_KEY / _BASE_URL             per image backend
   HERANDHIM_DEEPGRAM_API_KEY, HERANDHIM_TAVILY_API_KEY
+  HERANDHIM_STT_PROVIDER / HERANDHIM_STT_LOCAL_MODEL   voice: auto|deepgram|local
   PORT
+
 """
 
 from __future__ import annotations
@@ -217,6 +219,11 @@ def render(existing: dict | None, environ: Mapping[str, str] = os.environ) -> di
 
     # ── Voice, search ───────────────────────────────────────────────────
     put(("deepgram", "apiKey"), "HERANDHIM_DEEPGRAM_API_KEY", "")
+    # Speech-to-text provider: auto (default) / deepgram / local. Nothing is
+    # written unless set — "auto" is the in-code default. The local path
+    # needs faster-whisper (pip install "herandhim[stt-local]").
+    put(("stt", "provider"),       "HERANDHIM_STT_PROVIDER")
+    put(("stt", "local", "model"), "HERANDHIM_STT_LOCAL_MODEL")
     put(("tavily", "apiKey"),   "HERANDHIM_TAVILY_API_KEY",   "")
 
     # ── Web ─────────────────────────────────────────────────────────────

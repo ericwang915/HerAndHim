@@ -229,7 +229,7 @@ ever leaves your machine. Skip them entirely and everything else still works.
 | 💕 **Boyfriend or girlfriend** | 🎭 **Three-layer identity** (soul · persona · profile) | 🧠 **16 model providers** (OpenAI · Claude · Gemini · Grok · DeepSeek · Qwen · Groq · **Ollama**…) |
 | 💬 **Human texting** (bursts, reactions, typing rhythm) | 💖 **Emotional memory** + relationship stages | 📅 **Personal-date engine** (birthdays, plans) |
 | 📷 **AI selfies** with a consistent face (**13 image backends**, incl. keyless + fully local) | 🌆 **Daily life** grounded in a real city + weather | ⏰ **Proactive messages** that back off when ignored |
-| 🎙️ **Understands voice notes** (Deepgram) | 👀 **Sees your photos** (vision) | 🗣️ **8 languages**, native soul/persona |
+| 🎙️ **Understands voice notes** (Deepgram, or **fully local** faster-whisper) | 👀 **Sees your photos** (vision) | 🗣️ **8 languages**, native soul/persona |
 | 🌐 **Web dashboard** + 📱 **Telegram** | 🛠️ **Extensible skills** (LLM writes its own) | 💾 **All local** — SQLite + Markdown, zero cloud |
 
 ---
@@ -327,7 +327,8 @@ All runtime data lives under `~/.herandhim/`:
     "maxDaily": 6,
     "quietStart": 0, "quietEnd": 8
   },
-  "deepgram": { "apiKey": "" },            // voice input (optional)
+  "deepgram": { "apiKey": "" },            // voice input via cloud (optional)
+  "stt": { "provider": "auto" },           // or "local" — see Voice notes below
   "tavily":   { "apiKey": "" },            // web search (optional)
   "web": { "host": "0.0.0.0", "port": 7788 },
   "agent": {
@@ -383,6 +384,33 @@ local model on the same Ollama:
 (`HERANDHIM_VISION_PROVIDER` / `HERANDHIM_VISION_MODEL` in Docker.) Endpoint
 and key default to that provider's own section, so provider + model is usually
 enough. With nothing set, a Gemini key alone still gives her vision.
+
+**Hearing your voice notes.** Two speech-to-text engines, one interface —
+this is input only (she doesn't speak back yet):
+
+- **Deepgram** (cloud) — set `deepgram.apiKey` / `DEEPGRAM_API_KEY`; used
+  automatically when the key exists.
+- **faster-whisper** (🏠 local) — no key, audio never leaves your machine.
+  Install the extra and it kicks in whenever no Deepgram key is set:
+
+```bash
+pip install "herandhim[stt-local]"
+```
+
+```json
+"stt": {
+  "provider": "auto",                     // auto | deepgram | local
+  "local": { "model": "base", "computeType": "int8" }
+}
+```
+
+`provider: "auto"` (the default) prefers Deepgram when a key is set and falls
+back to the local model if the cloud call fails; pin `"local"`
+(`HERANDHIM_STT_PROVIDER=local`) to guarantee audio stays on the box. Model
+sizes trade accuracy for footprint: `tiny` (~0.5 GB RAM at int8, fastest),
+`base` (default, ~0.7 GB), `small` (~1.5 GB, noticeably better on accents and
+Chinese). `int8` is the right `computeType` on CPU; the model downloads once
+on first use.
 
 ---
 
@@ -515,7 +543,7 @@ HerAndHim/
 │   │   ├── tools.py             # tool dispatch
 │   │   ├── skill_loader.py      # three-tier progressive skill loading
 │   │   ├── compaction.py        # context compaction
-│   │   ├── stt.py               # speech-to-text (Deepgram)
+│   │   ├── stt.py               # speech-to-text (Deepgram / local faster-whisper)
 │   │   ├── llm/                 # provider adapters (6)
 │   │   ├── memory/              # Markdown memory + emotional graph + milestones + temporal index
 │   │   ├── retrieval/           # BM25 + dense + RRF + LLM reranker

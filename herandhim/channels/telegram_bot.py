@@ -624,10 +624,11 @@ class TelegramBot:
         ]
 
     async def _transcribe_voice(self, update: Update) -> str | None:
-        """Download a voice/audio message and transcribe via Deepgram.
+        """Download a voice/audio message and transcribe it (Deepgram or
+        local faster-whisper, per ``stt.provider``).
 
         Returns the transcript text, or sends a hint to the user and
-        returns ``None`` if Deepgram is not configured.
+        returns ``None`` if no STT provider is configured.
         """
         from ..core.stt import no_key_message, transcribe_bytes_async
 
@@ -639,7 +640,7 @@ class TelegramBot:
         try:
             transcript = await transcribe_bytes_async(audio_bytes, mime)
         except Exception as exc:
-            logger.warning("[Telegram] Deepgram transcription failed: %s", exc)
+            logger.warning("[Telegram] Voice transcription failed: %s", exc)
             await update.message.reply_text(f"Voice transcription failed: {exc}")
             return None
 

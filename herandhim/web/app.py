@@ -800,7 +800,7 @@ async def _api_save_index(request: Request):
 
 
 async def _api_transcribe(request: Request):
-    """Proxy audio to Deepgram STT and return transcript."""
+    """Transcribe audio (Deepgram or local faster-whisper) and return transcript."""
     from ..core.stt import no_key_message, transcribe_bytes_async
 
     content_type = request.headers.get("content-type", "audio/webm")
@@ -811,7 +811,7 @@ async def _api_transcribe(request: Request):
     try:
         transcript = await transcribe_bytes_async(body, content_type)
     except Exception as exc:
-        logger.warning("[Web] Deepgram error: %s", exc)
+        logger.warning("[Web] STT error: %s", exc)
         return JSONResponse({"ok": False, "error": str(exc)}, status_code=502)
 
     if transcript is None:
