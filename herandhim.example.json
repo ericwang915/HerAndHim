@@ -45,6 +45,15 @@
   "deepgram": {
     "apiKey": ""
   },
+  "stt": {
+    "provider": "auto",
+    "local": {
+      "model": "base",
+      "device": "cpu",
+      "computeType": "int8",
+      "language": "auto"
+    }
+  },
   "elevenlabs": {
     "apiKey": "",
     "voiceId": "ByhETIclHirOlWnWKhHc"

@@ -89,6 +89,20 @@ def test_vision_env_vars_land_under_llm_vision(rc):
     assert rc.render(saved, {})["llm"]["vision"] == {"provider": "ollama", "model": "moondream"}
 
 
+def test_stt_env_vars_land_under_stt(rc):
+    """Local speech-to-text: provider and model size come in via env."""
+    cfg = rc.render(None, {"HERANDHIM_STT_PROVIDER": "local",
+                           "HERANDHIM_STT_LOCAL_MODEL": "small"})
+    assert cfg["stt"] == {"provider": "local", "local": {"model": "small"}}
+
+    # Not set → not written ("auto" is the in-code default); a saved choice
+    # survives a restart.
+    assert "stt" not in rc.render(None, {})
+    saved = _saved_config()
+    saved["stt"] = {"provider": "local", "local": {"model": "tiny"}}
+    assert rc.render(saved, {})["stt"] == {"provider": "local", "local": {"model": "tiny"}}
+
+
 def test_fresh_render_with_no_keys_still_boots(rc):
     cfg = rc.render(None, {})
     assert cfg["llm"]["provider"] == "deepseek"

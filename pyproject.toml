@@ -44,15 +44,20 @@ dependencies = [
 ]
 
 # Optional feature sets.
-#   pip install -e ".[search]"   # TF-IDF recall — better memory search, but
-#                                #   pulls in scipy (~130 MB). Without it
-#                                #   retrieval falls back to character-bigram
-#                                #   similarity, which still works.
-#   pip install -e ".[twitter]"  # the Twitter/X skill
-#   pip install -e ".[all]"      # everything (what the Docker image installs)
+#   pip install -e ".[search]"    # TF-IDF recall — better memory search, but
+#                                 #   pulls in scipy (~130 MB). Without it
+#                                 #   retrieval falls back to character-bigram
+#                                 #   similarity, which still works.
+#   pip install -e ".[twitter]"   # the Twitter/X skill
+#   pip install -e ".[stt-local]" # local voice transcription (faster-whisper,
+#                                 #   ~200 MB of wheels + the model on first
+#                                 #   use). Not in [all] to keep the default
+#                                 #   Docker image lean — add it explicitly.
+#   pip install -e ".[all]"       # everything (what the Docker image installs)
 [project.optional-dependencies]
 search = ["scikit-learn>=1.3"]
 twitter = ["tweepy>=4.14"]
+stt-local = ["faster-whisper>=1.0"]
 all = ["scikit-learn>=1.3", "tweepy>=4.14"]
 
 [project.scripts]
