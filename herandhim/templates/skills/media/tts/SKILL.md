@@ -1,14 +1,14 @@
 ---
 name: tts
-description: "Text-to-speech — convert text to voice message using ElevenLabs. Use when: user asks for a voice message, wants to hear something spoken, or you want to send a voice reply instead of text. Also use when you feel like expressing emotion through voice."
+description: "Text-to-speech — convert text to a voice message using ElevenLabs (cloud) or Piper/Kokoro (local). Use when: user asks for a voice message, wants to hear something spoken, or you want to send a voice reply instead of text. Also use when you feel like expressing emotion through voice."
 dependencies: null
 metadata:
   emoji: "🎙️"
 ---
 
-# Text-to-Speech (ElevenLabs)
+# Text-to-Speech (ElevenLabs / local Piper)
 
-Convert text to a natural voice message and send it as an audio file.
+Convert text to a natural voice message and send it as a playable voice note.
 
 ## When to Use
 
@@ -24,6 +24,8 @@ Convert text to a natural voice message and send it as an audio file.
 
 - Normal text chat is fine
 - Don't overuse — voice messages are special, not every reply
+- Note: when the user sends a voice note, the channel may already answer
+  in voice automatically (reply-in-kind) — no need to invoke this skill
 
 ## Usage
 
@@ -31,22 +33,34 @@ Convert text to a natural voice message and send it as an audio file.
 python {skill_path}/speak.py "想你了宝贝～晚安" --output voice.mp3
 ```
 
+Then deliver with the `send_voice` tool (playable voice bubble), not
+`send_file`.
+
 ### Options
 
 ```bash
-# Custom voice ID
+# Force the local engine (Piper — offline, no key; needs herandhim[tts-local])
+python {skill_path}/speak.py "早安呀" --engine local --output voice.ogg
+
+# Custom ElevenLabs voice ID
 python {skill_path}/speak.py "早安呀" --voice ByhETIclHirOlWnWKhHc --output voice.mp3
 
-# Fallback to gTTS if ElevenLabs is unavailable
+# Last-resort fallback via gTTS (online, robotic)
 python {skill_path}/speak.py "你好" --engine gtts --lang zh --output voice.mp3
 ```
 
 ## Configuration
 
-Set your ElevenLabs API key in `herandhim.json`:
+The default `--engine auto` follows `tts.provider` in `herandhim.json`
+(`auto` | `elevenlabs` | `local`) — the same knob that drives automatic
+voice replies:
 
 ```json
 {
+  "tts": {
+    "provider": "auto",
+    "local": { "engine": "piper", "voice": "zh_CN-huayan-medium" }
+  },
   "elevenlabs": {
     "apiKey": "sk_...",
     "voiceId": "ByhETIclHirOlWnWKhHc"
@@ -54,18 +68,22 @@ Set your ElevenLabs API key in `herandhim.json`:
 }
 ```
 
-Or via environment variable: `ELEVENLABS_API_KEY`
+Or via environment variables: `ELEVENLABS_API_KEY`, `HERANDHIM_TTS_PROVIDER`.
 
 ## Notes
 
-- Uses ElevenLabs `eleven_multilingual_v2` model (supports Chinese + English)
-- Default voice: `ByhETIclHirOlWnWKhHc`
-- Falls back to gTTS (Google) if ElevenLabs fails
-- Output is MP3 format
-- After generating, use the file sender to deliver it to the user
+- ElevenLabs uses `eleven_multilingual_v2` (Chinese + English); output is MP3
+- Local Piper (`pip install "herandhim[tts-local]"`) runs on CPU, downloads
+  the voice model on first use, and outputs OGG/Opus when ffmpeg is
+  installed (WAV without — Telegram voice notes need OGG/Opus or MP3)
+- Default local voice is Mandarin (`zh_CN-huayan-medium`); set
+  `tts.local.voice` to another Piper voice name or a `.onnx` path
+- Engine order in `auto`: ElevenLabs (key set) → local Piper (installed) →
+  gTTS as the last resort
+- After generating, use the `send_voice` tool to deliver it as a voice note
 
 ## Resources
 
 | File | Description |
 |------|-------------|
-| `speak.py` | ElevenLabs TTS with gTTS fallback |
+| `speak.py` | ElevenLabs / local Piper TTS with gTTS last resort |

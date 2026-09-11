@@ -54,6 +54,13 @@
       "language": "auto"
     }
   },
+  "tts": {
+    "provider": "auto",
+    "local": {
+      "engine": "piper",
+      "voice": "zh_CN-huayan-medium"
+    }
+  },
   "elevenlabs": {
     "apiKey": "",
     "voiceId": "ByhETIclHirOlWnWKhHc"
@@ -65,7 +72,9 @@
   "channels": {
     "telegram": {
       "token": "",
-      "allowedUsers": []
+      "allowedUsers": [],
+      "replyInKindVoice": "auto",
+      "voiceReplyMaxChars": 350
     }
   },
   "isolation": {
