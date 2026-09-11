@@ -24,7 +24,10 @@ Env vars (the container's ``.env.example`` documents them all):
   HERANDHIM_IMAGE_PROVIDER / HERANDHIM_IMAGE_MODEL    selfies, backend inferred
   HERANDHIM_<BACKEND>_API_KEY / _BASE_URL             per image backend
   HERANDHIM_DEEPGRAM_API_KEY, HERANDHIM_TAVILY_API_KEY
-  HERANDHIM_STT_PROVIDER / HERANDHIM_STT_LOCAL_MODEL   voice: auto|deepgram|local
+  HERANDHIM_STT_PROVIDER / HERANDHIM_STT_LOCAL_MODEL   voice in: auto|deepgram|local
+  HERANDHIM_ELEVENLABS_API_KEY
+  HERANDHIM_TTS_PROVIDER / HERANDHIM_TTS_LOCAL_VOICE   voice out: auto|elevenlabs|local
+  HERANDHIM_REPLY_IN_KIND_VOICE                        voice note in → voice note back
   PORT
 
 """
@@ -224,6 +227,14 @@ def render(existing: dict | None, environ: Mapping[str, str] = os.environ) -> di
     # needs faster-whisper (pip install "herandhim[stt-local]").
     put(("stt", "provider"),       "HERANDHIM_STT_PROVIDER")
     put(("stt", "local", "model"), "HERANDHIM_STT_LOCAL_MODEL")
+    # Text-to-speech provider: auto (default) / elevenlabs / local. The local
+    # path needs Piper (pip install "herandhim[tts-local]"); ffmpeg is already
+    # in the image. replyInKindVoice: false / true / auto (default) — answer
+    # voice notes with voice notes.
+    put(("elevenlabs", "apiKey"),  "HERANDHIM_ELEVENLABS_API_KEY", "")
+    put(("tts", "provider"),       "HERANDHIM_TTS_PROVIDER")
+    put(("tts", "local", "voice"), "HERANDHIM_TTS_LOCAL_VOICE")
+    put(("channels", "telegram", "replyInKindVoice"), "HERANDHIM_REPLY_IN_KIND_VOICE")
     put(("tavily", "apiKey"),   "HERANDHIM_TAVILY_API_KEY",   "")
 
     # ── Web ─────────────────────────────────────────────────────────────

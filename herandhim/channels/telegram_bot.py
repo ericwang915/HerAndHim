@@ -21,6 +21,9 @@ Commands
   /compact [hint] — compact conversation history
   <text>          — forwarded to Agent.chat(), reply sent back
   <photo>         — image sent to LLM with optional caption
+  <voice>         — transcribed (core/stt.py) and answered; per
+                    channels.telegram.replyInKindVoice the answer itself is
+                    sent back as a voice note (core/tts.py), text on any miss
 
 Access control
 --------------
@@ -123,6 +126,21 @@ class TelegramBot:
                 photo=f,
                 caption=caption[:1024] if caption else None,
             )
+
+    async def send_voice(self, chat_id: int, voice: bytes | str, caption: str = "") -> None:
+        """Send a playable voice bubble. *voice* is OGG/Opus or MP3 —
+        either raw bytes or a file path."""
+        if self._app is None:
+            logger.warning("[Telegram] send_voice called before bot is running")
+            return
+        if isinstance(voice, str):
+            with open(voice, "rb") as f:
+                voice = f.read()
+        await self._app.bot.send_voice(
+            chat_id=chat_id,
+            voice=voice,
+            caption=caption[:1024] if caption else None,
+        )
 
     # ── Access control ────────────────────────────────────────────────────────
 
@@ -413,6 +431,12 @@ class TelegramBot:
         else:
             chat_input = user_text or ""
 
+        # Reply-in-kind: they spoke, so she'd rather speak back. Decided per
+        # reply by core.tts (mode/length caps); any TTS miss falls back to
+        # text below — the reply itself is never at risk.
+        from ..core import tts as _tts
+        reply_in_kind = has_voice and _tts.reply_in_kind_mode() != "false"
+
         typing_task = asyncio.create_task(
             self._keep_typing(update.message.chat_id)
         )
@@ -421,18 +445,31 @@ class TelegramBot:
                 loop = asyncio.get_event_loop()
                 chat_id = update.effective_chat.id
                 self._register_file_sender(loop, chat_id)
-                if is_companion:
+                if is_companion or reply_in_kind:
                     # Humanized delivery: full reply, then a length-scaled
                     # pause + 1-3 bubbles. (No live edit-in-place — watching
                     # a message rewrite itself reads as a bot, not a partner.)
+                    # A voice-note turn also lands here even in assistant
+                    # mode: a voice reply needs the finished text, not a
+                    # stream.
                     reply = await loop.run_in_executor(None, agent.chat, chat_input)
                     typing_task.cancel()
                     if reply:
-                        try:
-                            await asyncio.sleep(reply_delay(reply))
-                        except Exception:
-                            pass
-                        await send_burst(context.bot, chat_id, _clean_response(reply))
+                        text = _clean_response(reply)
+                        if is_companion:
+                            try:
+                                await asyncio.sleep(reply_delay(reply))
+                            except Exception:
+                                pass
+                        sent_voice = False
+                        if reply_in_kind:
+                            sent_voice = await self._maybe_send_voice_reply(chat_id, text)
+                        if not sent_voice:
+                            if is_companion:
+                                await send_burst(context.bot, chat_id, text)
+                            else:
+                                for chunk in _split_message(text):
+                                    await update.message.reply_text(chunk)
                 else:
                     token_queue: _queue.Queue[str] = _queue.Queue()
                     future = loop.run_in_executor(
@@ -454,6 +491,46 @@ class TelegramBot:
                 pass
 
     _AGENT_TIMEOUT = 600
+
+    async def _maybe_send_voice_reply(self, chat_id: int, text: str) -> bool:
+        """Try to answer a voice note with a voice note (reply-in-kind).
+
+        Returns True only when a voice bubble was actually delivered. Any
+        miss — the decision says text, no TTS provider is usable, synthesis
+        or the send fails, or the local engine could only produce WAV (no
+        ffmpeg) — returns False so the caller falls back to text.
+        """
+        from ..core import tts
+
+        try:
+            if not tts.should_voice_reply(text):
+                return False
+            speech = tts.strip_for_speech(text)
+            if not speech:
+                return False
+            try:
+                await self._app.bot.send_chat_action(
+                    chat_id=chat_id, action="record_voice")
+            except Exception:
+                pass
+            clip = await tts.synthesize_async(speech)
+            if clip is None:
+                logger.debug("[Telegram] No usable TTS provider — replying with text")
+                return False
+            if not clip.telegram_ready:
+                logger.warning(
+                    "[Telegram] TTS produced %s but Telegram voice notes need "
+                    "OGG/Opus or MP3 (install ffmpeg); replying with text",
+                    clip.format,
+                )
+                return False
+            await self._app.bot.send_voice(chat_id=chat_id, voice=clip.data)
+            logger.info("[Telegram] Voice reply sent (%d chars → %s, %.1f KB)",
+                        len(speech), clip.format, len(clip.data) / 1024)
+            return True
+        except Exception as exc:
+            logger.warning("[Telegram] Voice reply failed (%s); replying with text", exc)
+            return False
 
     async def _flush_stream(
         self,
@@ -561,8 +638,9 @@ class TelegramBot:
                 await update.message.reply_text(chunk)
 
     def _register_file_sender(self, loop: asyncio.AbstractEventLoop, chat_id: int) -> None:
-        """Register sync callbacks so the Agent can send files / photos via Telegram."""
-        from ..core.tools import set_file_sender, set_photo_sender
+        """Register sync callbacks so the Agent can send files / photos /
+        voice notes via Telegram."""
+        from ..core.tools import set_file_sender, set_photo_sender, set_voice_sender
 
         bot_app = self._app
 
@@ -596,8 +674,23 @@ class TelegramBot:
             future = asyncio.run_coroutine_threadsafe(_do_send(), loop)
             future.result(timeout=60)
 
+        def _voice_sender(path: str, caption: str = "") -> None:
+            async def _do_send():
+                # No try/except: a failure must propagate so tools.send_voice
+                # can fall back to sending the audio as a document.
+                with open(path, "rb") as f:
+                    await bot_app.bot.send_voice(
+                        chat_id=chat_id,
+                        voice=f,
+                        caption=caption[:1024] if caption else None,
+                    )
+
+            future = asyncio.run_coroutine_threadsafe(_do_send(), loop)
+            future.result(timeout=60)
+
         set_file_sender(self._session_id(chat_id), _file_sender)
         set_photo_sender(self._session_id(chat_id), _photo_sender)
+        set_voice_sender(self._session_id(chat_id), _voice_sender)
 
     async def _build_image_input(self, update: Update, caption: str) -> list:
         """Download photo and build a multimodal content array."""
