@@ -3,7 +3,7 @@ Built-in tool implementations and OpenAI-compatible schemas.
 
 Structure
 ---------
-  PRIMITIVE_TOOLS   — run_command / read_file / write_file / send_file (always available)
+  PRIMITIVE_TOOLS   — run_command / read_file / write_file / send_file / send_voice (always available)
   SKILL_TOOLS       — use_skill / list_skill_resources (always available)
   META_SKILL_TOOLS  — create_skill (always available — "god mode" skill creation)
   MEMORY_TOOLS      — remember / recall (always available)
@@ -355,6 +355,7 @@ _MAX_SEND_FILE_BYTES = 100 * 1024 * 1024  # 100 MB
 # {session_id: callable(path, caption) → None}
 _file_senders: dict[str, callable] = {}
 _photo_senders: dict[str, callable] = {}
+_voice_senders: dict[str, callable] = {}
 
 
 def set_file_sender(session_id: str | None, fn: callable | None) -> None:
@@ -381,6 +382,38 @@ def set_photo_sender(session_id: str | None, fn: callable | None) -> None:
         _photo_senders.pop(key, None)
     else:
         _photo_senders[key] = fn
+
+
+def set_voice_sender(session_id: str | None, fn: callable | None) -> None:
+    """Register a callback for sending playable voice messages for a session.
+
+    When *session_id* is None (legacy), uses the empty-string key.
+    When *fn* is None, removes the callback for that session.
+    """
+    key = session_id or ""
+    if fn is None:
+        _voice_senders.pop(key, None)
+    else:
+        _voice_senders[key] = fn
+
+
+def send_voice(path: str, caption: str = "", session_id: str = "") -> str:
+    """Send an audio file as a playable voice message (a Telegram voice
+    bubble).  Falls back to send_file if no voice-capable channel is
+    registered — the audio is never lost, it just arrives as a file."""
+    resolved = os.path.realpath(os.path.abspath(path))
+    if not os.path.isfile(resolved):
+        return f"Error: file not found: {path}"
+
+    sender = _voice_senders.get(session_id)
+    if sender is not None:
+        try:
+            sender(resolved, caption)
+            return f"Voice message '{os.path.basename(resolved)}' sent."
+        except Exception as exc:
+            logger.warning("[send_voice] voice_sender failed, falling back: %s", exc)
+
+    return send_file(resolved, caption, session_id=session_id)
 
 
 def send_photo(path: str, caption: str = "", session_id: str = "") -> str:
@@ -477,6 +510,7 @@ AVAILABLE_TOOLS: dict[str, callable] = {
     "write_file": write_file,
     "send_file": send_file,
     "send_photo": send_photo,
+    "send_voice": send_voice,
     "take_selfie": _tool_take_selfie,
     "candid_shot": _tool_candid_shot,
 }
@@ -532,6 +566,17 @@ PRIMITIVE_TOOLS: list[dict] = [
         {
             "path": {"type": "string", "description": "Absolute or relative path to the file to send."},
             "caption": {"type": "string", "description": "Optional caption or description for the file.", "default": ""},
+        },
+        ["path"],
+    ),
+    _fn(
+        "send_voice",
+        "Send an audio file as a playable voice message (Telegram voice bubble). "
+        "The file must be OGG/Opus or MP3 — generate it with the tts skill first. "
+        "Use for voice replies; falls back to a regular file on channels without voice.",
+        {
+            "path": {"type": "string", "description": "Path to the OGG/Opus or MP3 audio file to send."},
+            "caption": {"type": "string", "description": "Optional caption for the voice message.", "default": ""},
         },
         ["path"],
     ),

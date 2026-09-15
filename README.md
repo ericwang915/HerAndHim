@@ -229,7 +229,7 @@ ever leaves your machine. Skip them entirely and everything else still works.
 | 💕 **Boyfriend or girlfriend** | 🎭 **Three-layer identity** (soul · persona · profile) | 🧠 **16 model providers** (OpenAI · Claude · Gemini · Grok · DeepSeek · Qwen · Groq · **Ollama**…) |
 | 💬 **Human texting** (bursts, reactions, typing rhythm) | 💖 **Emotional memory** + relationship stages | 📅 **Personal-date engine** (birthdays, plans) |
 | 📷 **AI selfies** with a consistent face (**13 image backends**, incl. keyless + fully local) | 🌆 **Daily life** grounded in a real city + weather | ⏰ **Proactive messages** that back off when ignored |
-| 🎙️ **Understands voice notes** (Deepgram, or **fully local** faster-whisper) | 👀 **Sees your photos** (vision) | 🗣️ **8 languages**, native soul/persona |
+| 🎙️ **Voice both ways** — hears your voice notes and **answers in voice** (cloud, or **fully local** faster-whisper + Piper) | 👀 **Sees your photos** (vision) | 🗣️ **8 languages**, native soul/persona |
 | 🌐 **Web dashboard** + 📱 **Telegram** | 🛠️ **Extensible skills** (LLM writes its own) | 💾 **All local** — SQLite + Markdown, zero cloud |
 
 ---
@@ -329,6 +329,8 @@ All runtime data lives under `~/.herandhim/`:
   },
   "deepgram": { "apiKey": "" },            // voice input via cloud (optional)
   "stt": { "provider": "auto" },           // or "local" — see Voice notes below
+  "elevenlabs": { "apiKey": "" },          // voice replies via cloud (optional)
+  "tts": { "provider": "auto" },           // or "local" — see Voice notes below
   "tavily":   { "apiKey": "" },            // web search (optional)
   "web": { "host": "0.0.0.0", "port": 7788 },
   "agent": {
@@ -385,8 +387,7 @@ local model on the same Ollama:
 and key default to that provider's own section, so provider + model is usually
 enough. With nothing set, a Gemini key alone still gives her vision.
 
-**Hearing your voice notes.** Two speech-to-text engines, one interface —
-this is input only (she doesn't speak back yet):
+**Hearing your voice notes.** Two speech-to-text engines, one interface:
 
 - **Deepgram** (cloud) — set `deepgram.apiKey` / `DEEPGRAM_API_KEY`; used
   automatically when the key exists.
@@ -411,6 +412,61 @@ sizes trade accuracy for footprint: `tiny` (~0.5 GB RAM at int8, fastest),
 `base` (default, ~0.7 GB), `small` (~1.5 GB, noticeably better on accents and
 Chinese). `int8` is the right `computeType` on CPU; the model downloads once
 on first use.
+
+**Speaking back.** The same shape on the way out — two text-to-speech
+engines behind one knob:
+
+- **ElevenLabs** (cloud) — set `elevenlabs.apiKey` / `ELEVENLABS_API_KEY`;
+  used automatically when the key exists.
+- **Piper** (🏠 local) — no key, text never leaves your machine. Install the
+  extra and it kicks in whenever no ElevenLabs key is set:
+
+```bash
+pip install "herandhim[tts-local]"   # plus ffmpeg on the PATH
+```
+
+```json
+"tts": {
+  "provider": "auto",                     // auto | elevenlabs | local
+  "local": { "engine": "piper", "voice": "zh_CN-huayan-medium" }
+}
+```
+
+`provider: "auto"` (the default) prefers ElevenLabs when a key is set and
+falls back to local Piper if the cloud call fails; pin `"local"`
+(`HERANDHIM_TTS_PROVIDER=local`) to guarantee text stays on the box. The
+default voice is natural Mandarin (`zh_CN-huayan-medium`, downloaded once on
+first use); set `tts.local.voice` to any other
+[Piper voice name](https://github.com/OHF-Voice/piper1-gpl/blob/main/docs/VOICES.md)
+or to the path of a `.onnx` model you already have. Telegram voice notes must
+be OGG/Opus or MP3, so the local path needs **ffmpeg** with opus (any standard
+build; the Docker image already ships it) — without ffmpeg she quietly sticks
+to text. Prefer Kokoro's prosody? Set `tts.local.engine: "kokoro"` after
+`pip install kokoro` (heavier — it pulls in PyTorch). The old gTTS fallback
+survives only inside the `tts` skill as a last resort when neither real
+engine is available.
+
+**She answers voice with voice.** Send her a voice note and, when a TTS
+provider is usable, the reply comes back as a voice note too — reply in kind.
+`channels.telegram.replyInKindVoice` controls it:
+
+```json
+"channels": {
+  "telegram": { "replyInKindVoice": "auto", "voiceReplyMaxChars": 350 }
+}
+```
+
+`"auto"` (the default) voices replies up to `voiceReplyMaxChars` and only
+sometimes voices a tiny ack ("嗯嗯") so it never turns into voice-note spam;
+`true` always answers voice with voice (still length-capped); `false` turns
+it off (`HERANDHIM_REPLY_IN_KIND_VOICE=false`). Any TTS miss — no provider,
+synthesis error, no ffmpeg — silently falls back to text: the reply is never
+dropped. Text messages still get text; she only speaks when spoken to, plus
+the occasional voice note she decides to send via the `tts` skill.
+
+With no ElevenLabs key, `pip install "herandhim[tts-local]"` + ffmpeg is all
+it takes: she hears you through local faster-whisper and answers in her own
+local Piper voice, fully offline.
 
 ---
 
@@ -544,6 +600,7 @@ HerAndHim/
 │   │   ├── skill_loader.py      # three-tier progressive skill loading
 │   │   ├── compaction.py        # context compaction
 │   │   ├── stt.py               # speech-to-text (Deepgram / local faster-whisper)
+│   │   ├── tts.py               # text-to-speech (ElevenLabs / local Piper·Kokoro)
 │   │   ├── llm/                 # provider adapters (6)
 │   │   ├── memory/              # Markdown memory + emotional graph + milestones + temporal index
 │   │   ├── retrieval/           # BM25 + dense + RRF + LLM reranker
@@ -612,7 +669,7 @@ anti-dark-pattern design decisions.
 companion engine (memory, daily life, photos, humanized delivery) is stable;
 the web dashboard is functional but plain. Expect rough edges in setup.
 
-Roadmap: richer local-model UX · voice notes both directions · a desktop
+Roadmap: richer local-model UX · realtime voice calls · a desktop
 avatar mode · more languages. Ideas and issues welcome.
 
 ---

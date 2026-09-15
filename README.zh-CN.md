@@ -158,7 +158,7 @@ herandhim chat
 | 💕 **男友或女友** | 🎭 **三层身份**（灵魂 · 人设 · 生平） | 🧠 **16 家模型厂商**（OpenAI · Claude · Gemini · Grok · DeepSeek · 通义千问 · 智谱 · **Ollama 本地**…） |
 | 💬 **真人式发消息**（连发、表情反应、打字节奏） | 💖 **情感记忆** + 关系阶段 | 📅 **个人日期引擎**（生日、约定） |
 | 📷 **AI 自拍**，人脸始终一致（**13 家出图后端**，含免注册和纯本地） | 🌆 **有生活的一天**（真实城市 + 天气） | ⏰ **主动消息**，被冷落会自动退让 |
-| 🎙️ **听得懂语音条**（Deepgram，或**纯本地** faster-whisper） | 👀 **看得见你发的图**（视觉） | 🗣️ **8 种语言**，灵魂/人设按母语生成 |
+| 🎙️ **语音双向** — 听得懂你的语音条，还会**用语音回你**（云端，或**纯本地** faster-whisper + Piper） | 👀 **看得见你发的图**（视觉） | 🗣️ **8 种语言**，灵魂/人设按母语生成 |
 | 🌐 **网页面板** + 📱 **Telegram** | 🛠️ **可扩展技能**（模型能自己写技能） | 💾 **全本地** —— SQLite + Markdown，零云依赖 |
 
 **让她看见你发的图。** 聊天模型不支持图片也没关系：单独指定一个负责“看图”的模型，
@@ -176,12 +176,31 @@ herandhim chat
 key 默认沿用该厂商自己的配置，一般填 provider + model 就够了。什么都不填的话，
 只要有 Gemini key 她也一样看得见。
 
-**让她听懂你的语音条。** 两条路，同一个入口（目前只有语音输入，她还不会发语音回来）：
+**让她听懂你的语音条。** 两条路，同一个入口：
 设了 `deepgram.apiKey` 就走 Deepgram 云端；不想让音频离开你的机器，装上本地转写
 （`pip install "herandhim[stt-local]"`），没有 Deepgram key 时它会自动接管，
 或者用 `"stt": { "provider": "local" }`（`HERANDHIM_STT_PROVIDER=local`）强制本地。
 模型大小在 `stt.local.model` 里选：`tiny`（最快）/ `base`（默认）/ `small`
 （更准，中文效果明显更好），首次使用时自动下载，CPU 上用默认的 `int8` 即可。
+
+**让她开口说话。** 出口和入口长得一样，也是两条路，由 `tts.provider` 决定：
+设了 `elevenlabs.apiKey`（`ELEVENLABS_API_KEY`）就走 ElevenLabs 云端；
+想完全离线，装上本地语音（`pip install "herandhim[tts-local]"`，另外机器上
+要有 ffmpeg——Telegram 语音条需要 OGG/Opus 格式），没有 ElevenLabs key 时
+它会自动接管，或者用 `"tts": { "provider": "local" }`
+（`HERANDHIM_TTS_PROVIDER=local`）强制本地。默认音色是 Piper 的中文女声
+`zh_CN-huayan-medium`（首次使用自动下载），在 `tts.local.voice` 里可以换成
+其他 [Piper 音色](https://github.com/OHF-Voice/piper1-gpl/blob/main/docs/VOICES.md)
+或你自己下载的 `.onnx` 模型路径；想要 Kokoro 的韵律，`pip install kokoro`
+后设 `tts.local.engine: "kokoro"`（较重，会装 PyTorch）。
+
+**你发语音，她也回语音。** 只要有可用的 TTS，你发来的语音条会得到语音回复
+（reply-in-kind），由 `channels.telegram.replyInKindVoice` 控制：`"auto"`
+（默认）只给不超过 `voiceReplyMaxChars`（350 字）的回复配音，太短的"嗯嗯"
+也只偶尔配音，不会刷屏；`true` 一律回语音；`false` 关掉。任何 TTS 失败都会
+静默换回文字——回复本身绝不会丢。你发文字，她也照旧回文字。
+没有 ElevenLabs key 的话，`pip install "herandhim[tts-local]"` + ffmpeg
+就够了：她用本地 faster-whisper 听你说，用本地 Piper 的声音回你，全程离线。
 
 ---
 
@@ -229,7 +248,7 @@ HerAndHim 是**面向成年人（18+）的关系模拟引擎** —— 一个情�
 
 **v0.2.0 —— 早期但可用。** 作者本人每天在自己机器上跑。伴侣引擎（记忆、日常生活、照片、拟人化交付）已稳定；网页面板功能完整但朴素。安装过程可能还有毛刺。
 
-路线图：更好的本地模型体验 · 双向语音条 · 桌面虚拟形象 · 更多语言。欢迎提 issue 和想法。
+路线图：更好的本地模型体验 · 实时语音通话 · 桌面虚拟形象 · 更多语言。欢迎提 issue 和想法。
 
 ---
 

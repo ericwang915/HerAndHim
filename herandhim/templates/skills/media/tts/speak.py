@@ -1,5 +1,13 @@
 #!/usr/bin/env python3
-"""Text-to-speech via ElevenLabs API (primary) with gTTS fallback."""
+"""Text-to-speech: ElevenLabs (cloud) or Piper/Kokoro (local), gTTS last resort.
+
+Engine selection (``--engine auto``, the default) follows ``tts.provider``
+in herandhim.json / HERANDHIM_TTS_PROVIDER, same as voice replies:
+ElevenLabs when a key is set, otherwise local Piper when installed
+(pip install "herandhim[tts-local]"). gTTS (Google, online) is kept only
+as the very last resort when neither is available, so a bare install can
+still speak — pin ``tts.provider`` to "local" to guarantee nothing
+leaves the machine."""
 
 import argparse
 import json
@@ -13,14 +21,14 @@ DEFAULT_VOICE_ID = "21m00Tcm4TlvDq8ikWAM"  # Rachel (premade, works on free tier
 DEFAULT_MODEL = "eleven_multilingual_v2"
 
 
-def _cfg(field: str, env: str = "") -> str | None:
-    """Read ``elevenlabs.<field>`` from env, then the loaded config, then the
+def _cfg(*keys: str, env: str = "") -> str | None:
+    """Read a dotted config value from env, then the loaded config, then the
     config file on disk (skills run as subprocesses without HERANDHIM_* in env)."""
     if env and os.environ.get(env):
         return os.environ[env]
     try:
         from herandhim.config import get as cfg_get
-        val = cfg_get("elevenlabs", field)
+        val = cfg_get(*keys)
         if val:
             return val
     except ImportError:
@@ -34,7 +42,9 @@ def _cfg(field: str, env: str = "") -> str | None:
             try:
                 with open(path, "r", encoding="utf-8") as f:
                     cfg = json.loads(f.read(), strict=False)
-                val = cfg.get("elevenlabs", {}).get(field)
+                val = cfg
+                for k in keys:
+                    val = val.get(k, {}) if isinstance(val, dict) else None
                 if val:
                     return val
             except Exception:
@@ -43,12 +53,12 @@ def _cfg(field: str, env: str = "") -> str | None:
 
 
 def _get_api_key() -> str | None:
-    return _cfg("apiKey", env="ELEVENLABS_API_KEY")
+    return _cfg("elevenlabs", "apiKey", env="ELEVENLABS_API_KEY")
 
 
 def _get_voice_id() -> str:
     """The voice configured in herandhim.json, else a premade free-tier one."""
-    return _cfg("voiceId") or DEFAULT_VOICE_ID
+    return _cfg("elevenlabs", "voiceId") or DEFAULT_VOICE_ID
 
 
 def tts_elevenlabs(
@@ -105,6 +115,42 @@ def tts_elevenlabs(
         return False
 
 
+def tts_local(text: str, output: str) -> bool:
+    """Local TTS (Piper by default, Kokoro via tts.local.engine) through
+    herandhim.core.tts — the same engine that powers voice replies.
+    Returns True on success; prints the install hint when missing."""
+    try:
+        from herandhim.core import tts as core_tts
+    except ImportError:
+        print("herandhim package not importable — local TTS unavailable.", file=sys.stderr)
+        return False
+
+    if not core_tts.local_available():
+        print('Local TTS not installed. Run: pip install "herandhim[tts-local]"',
+              file=sys.stderr)
+        return False
+
+    try:
+        clip = core_tts.synthesize_local(text)
+    except Exception as exc:
+        print(f"Local TTS failed: {exc}", file=sys.stderr)
+        return False
+
+    # The local engine yields .ogg (Opus, Telegram-ready) with ffmpeg
+    # installed, .wav without — fix the extension to match reality.
+    base, ext = os.path.splitext(output)
+    if ext.lower().lstrip(".") != clip.format:
+        output = f"{base}.{clip.format}"
+    os.makedirs(os.path.dirname(output) or ".", exist_ok=True)
+    with open(output, "wb") as f:
+        f.write(clip.data)
+    print(f"Saved: {output} (local, {len(clip.data) / 1024:.1f} KB)")
+    if clip.format == "wav":
+        print("Note: install ffmpeg to get OGG/Opus — required for Telegram "
+              "voice notes.", file=sys.stderr)
+    return True
+
+
 def tts_gtts(text: str, lang: str, slow: bool, output: str) -> bool:
     """Fallback TTS via gTTS."""
     try:
@@ -119,10 +165,37 @@ def tts_gtts(text: str, lang: str, slow: bool, output: str) -> bool:
     return True
 
 
+def _local_installed() -> bool:
+    try:
+        from herandhim.core import tts as core_tts
+        return core_tts.local_available()
+    except ImportError:
+        return False
+
+
+def _resolve_engine() -> str:
+    """Map ``tts.provider`` (auto/elevenlabs/local) onto a concrete engine,
+    mirroring core.tts: key → ElevenLabs, else local when installed, else
+    gTTS as the documented last resort."""
+    provider = (_cfg("tts", "provider", env="HERANDHIM_TTS_PROVIDER") or "auto").lower()
+    if provider == "elevenlabs":
+        return "elevenlabs"
+    if provider == "local":
+        return "local"
+    if _get_api_key():
+        return "elevenlabs"
+    if _local_installed():
+        return "local"
+    return "gtts"
+
+
 def main():
-    parser = argparse.ArgumentParser(description="Text-to-speech (ElevenLabs + gTTS fallback)")
+    parser = argparse.ArgumentParser(
+        description="Text-to-speech (ElevenLabs / local Piper / gTTS last resort)")
     parser.add_argument("text", help="Text to speak")
-    parser.add_argument("--engine", default="elevenlabs", choices=["elevenlabs", "gtts"])
+    parser.add_argument("--engine", default="auto",
+                        choices=["auto", "elevenlabs", "local", "gtts"],
+                        help="auto (default) follows tts.provider in config")
     parser.add_argument("--voice", default="",
                         help="ElevenLabs voice ID (default: elevenlabs.voiceId in config)")
     parser.add_argument("--model", default=DEFAULT_MODEL, help="ElevenLabs model ID")
@@ -131,8 +204,18 @@ def main():
     parser.add_argument("--output", "-o", default="voice.mp3", help="Output file path")
     args = parser.parse_args()
 
-    if args.engine == "elevenlabs":
+    engine = _resolve_engine() if args.engine == "auto" else args.engine
+
+    if engine == "elevenlabs":
         ok = tts_elevenlabs(args.text, args.output, args.voice, args.model)
+        if not ok and _local_installed():
+            print("Falling back to local TTS...", file=sys.stderr)
+            ok = tts_local(args.text, args.output)
+        if not ok:
+            print("Falling back to gTTS...", file=sys.stderr)
+            tts_gtts(args.text, args.lang, args.slow, args.output)
+    elif engine == "local":
+        ok = tts_local(args.text, args.output)
         if not ok:
             print("Falling back to gTTS...", file=sys.stderr)
             tts_gtts(args.text, args.lang, args.slow, args.output)
