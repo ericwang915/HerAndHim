@@ -58,6 +58,9 @@ WORKDIR /data
 # /data is a Fly volume mount point — user state lives here forever
 VOLUME ["/data"]
 
+# The dashboard binds 0.0.0.0 inside the container and is always gated by an
+# access token (see entrypoint.sh). Publish it to localhost only unless you
+# mean to reach it from other machines: -p 127.0.0.1:7788:7788
 EXPOSE 7788
 
 # tini reaps zombie children (subprocesses) properly

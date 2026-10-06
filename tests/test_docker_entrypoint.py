@@ -63,7 +63,8 @@ def test_fresh_render_infers_provider_from_the_one_key_set(rc):
     assert cfg["llm"]["deepseek"]["model"] == "deepseek-chat"
     assert cfg["llm"]["claude"] == {"apiKey": "", "model": "claude-sonnet-4-20250514"}
     assert cfg["channels"]["telegram"] == {"token": "", "allowedUsers": []}
-    assert cfg["web"] == {"host": "0.0.0.0", "port": 7788}
+    assert cfg["web"]["host"] == "0.0.0.0" and cfg["web"]["port"] == 7788
+    assert len(cfg["web"]["accessToken"]) >= 32          # minted: the bind is 0.0.0.0
 
 
 def test_fresh_render_reuses_the_gemini_chat_key_for_photos(rc):
@@ -171,7 +172,53 @@ def test_restart_always_binds_the_container_port(rc):
     saved = _saved_config()
     saved["web"] = {"host": "127.0.0.1", "port": 9999}
     cfg = rc.render(saved, {"PORT": "7788"})
-    assert cfg["web"] == {"host": "0.0.0.0", "port": 7788}
+    assert cfg["web"]["host"] == "0.0.0.0" and cfg["web"]["port"] == 7788
+
+
+# ── Dashboard access token ───────────────────────────────────────────────
+
+
+def test_container_always_has_an_access_token(rc):
+    """The container binds 0.0.0.0 and can't tell how its port was published,
+    so the app would refuse to start without a token. One is always there."""
+    fresh = rc.render(None, {})
+    minted = fresh["web"]["accessToken"]
+    assert len(minted) >= 32
+    assert minted != rc.render(None, {})["web"]["accessToken"]      # random, not a constant
+
+    # Env var wins, fresh or not.
+    assert rc.render(None, {"HERANDHIM_WEB_ACCESS_TOKEN": "chosen-by-me-0123456"})["web"]["accessToken"] \
+        == "chosen-by-me-0123456"
+    saved = _saved_config()
+    saved["web"]["accessToken"] = "from-the-volume-0123"
+    assert rc.render(saved, {"HERANDHIM_WEB_ACCESS_TOKEN": "rotated-0123456789"})["web"]["accessToken"] \
+        == "rotated-0123456789"
+
+
+def test_restart_keeps_the_minted_token_so_the_browser_cookie_stays_valid(rc):
+    saved = _saved_config()
+    saved["web"]["accessToken"] = "from-the-volume-0123"
+    assert rc.render(saved, {})["web"]["accessToken"] == "from-the-volume-0123"
+
+    # A pre-token file gets one on its next boot, and keeps it after that.
+    older = _saved_config()
+    assert "accessToken" not in older["web"]
+    first = rc.render(older, {})
+    assert len(first["web"]["accessToken"]) >= 32
+    assert rc.render(first, {})["web"]["accessToken"] == first["web"]["accessToken"]
+
+
+def test_run_command_opt_in_comes_in_via_env(rc):
+    assert "tools" not in rc.render(None, {})
+    assert rc.render(None, {"HERANDHIM_TOOLS_RUN_COMMAND": "true"})["tools"] == {"runCommand": "true"}
+
+
+def test_main_prints_the_token_and_locks_the_file_down(rc, tmp_path, capsys):
+    path = tmp_path / "herandhim.json"
+    assert rc.main([str(path)]) == 0
+    token = json.loads(path.read_text())["web"]["accessToken"]
+    assert f"dashboard access token: {token}" in capsys.readouterr().out
+    assert (path.stat().st_mode & 0o777) == 0o600
 
 
 def test_render_never_mutates_its_input(rc):
@@ -226,3 +273,23 @@ def test_entrypoint_delegates_to_the_renderer():
     assert "Always regenerate" not in sh
     dockerfile = (ROOT / "deploy/docker/Dockerfile").read_text()
     assert "render_config.py" in dockerfile
+
+
+def test_shipped_deploy_files_publish_to_localhost_and_probe_without_a_token():
+    """`-p 7788:7788` binds every host interface; the shipped examples must
+    not. Fly is public by nature, so its health check has to hit the one
+    endpoint that works without the token."""
+    import re
+    compose = (ROOT / "deploy/local/docker-compose.yml").read_text()
+    published = re.findall(r'^\s*-\s*"([^"]+)"\s*$', compose, re.M)
+    assert published == ["127.0.0.1:7788:7788"]
+
+    fly = (ROOT / "deploy/docker/fly.toml").read_text()
+    assert 'path         = "/healthz"' in fly
+    assert "HERANDHIM_WEB_ACCESS_TOKEN" in fly
+
+    for doc in ("README.md", "README.zh-CN.md", "deploy/docker/README.md",
+                "frontend/src/components/Hero.astro", "frontend/src/components/GetStarted.astro",
+                ".github/workflows/docker-publish.yml"):
+        text = (ROOT / doc).read_text()
+        assert not re.search(r"-p\s+7788:7788", text), f"{doc} still publishes 7788 on all interfaces"

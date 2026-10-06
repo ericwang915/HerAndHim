@@ -28,6 +28,8 @@ Env vars (the container's ``.env.example`` documents them all):
   HERANDHIM_ELEVENLABS_API_KEY
   HERANDHIM_TTS_PROVIDER / HERANDHIM_TTS_LOCAL_VOICE   voice out: auto|elevenlabs|local
   HERANDHIM_REPLY_IN_KIND_VOICE                        voice note in → voice note back
+  HERANDHIM_WEB_ACCESS_TOKEN                           dashboard secret (random one minted if unset)
+  HERANDHIM_TOOLS_RUN_COMMAND                          "true" to allow the agent a shell
   PORT
 
 """
@@ -38,6 +40,7 @@ import copy
 import json
 import os
 import pathlib
+import secrets
 import sys
 from collections.abc import Mapping
 from typing import Any
@@ -244,6 +247,19 @@ def render(existing: dict | None, environ: Mapping[str, str] = os.environ) -> di
     _set(cfg, ("web", "host"), "0.0.0.0")
     _set(cfg, ("web", "port"), int(env("PORT", "7788")))
 
+    # A 0.0.0.0 bind means the app refuses to start without an access token,
+    # and the container can't tell whether its port was published to
+    # localhost or to the world. So there is always one: the env var wins,
+    # an existing one is kept, and a fresh install gets a random one (printed
+    # by main() so `docker logs` shows it).
+    put(("web", "accessToken"), "HERANDHIM_WEB_ACCESS_TOKEN")
+    if not _get(cfg, ("web", "accessToken")):
+        _set(cfg, ("web", "accessToken"), secrets.token_urlsafe(24))
+
+    # The shell tool is off by default on a network-exposed dashboard; opt in
+    # with HERANDHIM_TOOLS_RUN_COMMAND=true (skills that run scripts need it).
+    put(("tools", "runCommand"), "HERANDHIM_TOOLS_RUN_COMMAND")
+
     return cfg
 
 
@@ -284,6 +300,15 @@ def main(argv: list[str] | None = None) -> int:
     print(f"[entrypoint] {mode} {path}")
     cfg = render(existing)
     path.write_text(json.dumps(cfg, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    try:
+        path.chmod(0o600)
+    except OSError:
+        pass
+
+    token = _get(cfg, ("web", "accessToken"), "")
+    print("[entrypoint] dashboard access token: " + token)
+    print("[entrypoint]   the browser asks for it once. Set HERANDHIM_WEB_ACCESS_TOKEN "
+          "to choose your own; it is also stored in web.accessToken in the file above.")
     return 0
 
 

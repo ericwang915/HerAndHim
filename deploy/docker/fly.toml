@@ -1,6 +1,15 @@
 # Fly.io config — run your own HerAndHim in the cloud instead of on a machine
 # at home. One instance, one companion, your keys.
 #
+# This publishes the dashboard on the public internet, so it is gated by an
+# access token. Set your own before the first deploy:
+#
+#   fly secrets set HERANDHIM_WEB_ACCESS_TOKEN="$(openssl rand -base64 32)" --app <your-app>
+#
+# Without it the container mints a random one on first boot and prints it in
+# `fly logs`. The agent's shell tool (run_command) stays off unless you also
+# set HERANDHIM_TOOLS_RUN_COMMAND=true.
+#
 # App name is global on fly.dev — change if "herandhim" is taken.
 
 app             = "herandhim"
@@ -26,7 +35,7 @@ swap_size_mb    = 512
     timeout      = "5s"
     grace_period = "30s"
     method       = "GET"
-    path         = "/api/status"
+    path         = "/healthz"      # unauthenticated liveness probe; /api/* needs the token
 
 # One companion needs far less than this; 1 GB leaves headroom for the
 # embedding model and photo generation. shared-cpu-1x / 512mb also works.

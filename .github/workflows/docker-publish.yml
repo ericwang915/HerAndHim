@@ -2,7 +2,7 @@ name: Publish Docker image
 
 # Builds and pushes the all-in-one image to GHCR so users can run HerAndHim
 # with a single command — no clone, no local build:
-#   docker run -e HERANDHIM_DEEPSEEK_API_KEY=sk-... -p 7788:7788 \
+#   docker run -e HERANDHIM_DEEPSEEK_API_KEY=sk-... -p 127.0.0.1:7788:7788 \
 #     -v herandhim:/data ghcr.io/<owner>/herandhim
 #
 # Fires on every push to main and on version tags (v*).
