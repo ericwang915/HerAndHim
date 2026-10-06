@@ -1029,6 +1029,76 @@ document.getElementById('identity-modal').addEventListener('click', (e) => {
 
 function _esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 
+// ── Access token ─────────────────────────────────────────────────────────────
+// When the server has web.accessToken set (always, when it's reachable from
+// other machines), every /api call and the chat socket need it. The token is
+// exchanged once for an HttpOnly cookie via /api/access/unlock; after that the
+// browser sends it on its own, so nothing else in this file has to know.
+let _accessPrompt = null;
+
+async function ensureAccess() {
+  let st = { required: false, authenticated: true };
+  try {
+    const r = await fetch('/api/access/status', { credentials: 'include' });
+    if (r.ok) st = await r.json();
+  } catch (_) { /* server unreachable — let the normal reconnect loop deal with it */ }
+  if (!st.required || st.authenticated) return;
+  await promptForAccessToken();
+}
+
+function promptForAccessToken() {
+  if (_accessPrompt) return _accessPrompt;
+  _accessPrompt = new Promise((resolve) => {
+    const el = document.createElement('div');
+    el.id = 'access-token-modal';
+    el.className = 'fixed inset-0 z-[60] flex items-center justify-center bg-black/80 p-4';
+    el.innerHTML = `
+      <div class="w-full max-w-md rounded-2xl bg-surface-900 border border-surface-700/60 p-6 space-y-4">
+        <div>
+          <h2 class="text-xl font-semibold text-white">Access token</h2>
+          <p class="text-sm text-gray-400 mt-1">
+            This dashboard is protected. Paste the access token from your
+            <code>HERANDHIM_WEB_ACCESS_TOKEN</code> / <code>web.accessToken</code> setting —
+            in Docker it's printed in the container log on startup.
+          </p>
+        </div>
+        <input id="access-token-value" type="password" placeholder="access token" autocomplete="current-password"
+          class="w-full px-3.5 py-2.5 bg-surface-950 border border-surface-700/60 rounded-lg text-sm text-white placeholder:text-gray-600">
+        <p id="access-token-status" class="text-sm min-h-[1.2em] text-gray-500"></p>
+        <button id="access-token-save" class="btn-primary w-full !py-2.5">Unlock</button>
+      </div>`;
+    document.body.appendChild(el);
+    const val = el.querySelector('#access-token-value');
+    const status = el.querySelector('#access-token-status');
+    const save = el.querySelector('#access-token-save');
+    val.focus();
+
+    save.onclick = async () => {
+      const token = val.value.trim();
+      if (!token) { status.textContent = 'Paste the token first.'; return; }
+      save.disabled = true; status.textContent = 'Checking…';
+      try {
+        const r = await fetch('/api/access/unlock', {
+          method: 'POST', credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token }),
+        });
+        const data = await r.json().catch(() => ({}));
+        if (!r.ok || data.ok === false) {
+          status.textContent = data.error || 'Wrong token.'; save.disabled = false; val.select(); return;
+        }
+        el.remove();
+        _accessPrompt = null;
+        resolve();
+      } catch (e) {
+        status.textContent = 'Network error.'; save.disabled = false;
+      }
+    };
+    val.addEventListener('keydown', e => { if (e.key === 'Enter') save.click(); });
+  });
+  return _accessPrompt;
+}
+
 // ── Chat ─────────────────────────────────────────────────────────────────────
 function connectWebSocket() {
   const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -1040,7 +1110,10 @@ function connectWebSocket() {
     // streaming.  No DOM bridge needed here.
   };
   ws.onclose = () => {
-    setTimeout(connectWebSocket, 3000);
+    // A refused handshake (token missing, rotated, or cookie expired) just
+    // looks like a failed connection here — re-check access before each
+    // retry so the token prompt comes back instead of a silent retry loop.
+    setTimeout(() => ensureAccess().then(connectWebSocket), 3000);
   };
   ws.onerror = () => { ws.close(); };
 
@@ -2346,9 +2419,7 @@ async function disconnectTool(name) {
 }
 
 // ── Init ─────────────────────────────────────────────────────────────────────
-switchTab('dashboard');
-connectWebSocket();
-refreshDashboard();
+// Boot happens at the bottom of this script, after ensureAccess().
 // ── First run: no LLM key yet ────────────────────────────────────────────────
 // Without this the dashboard boots into a "setup mode" the user can't get out
 // of from the browser — the key could only be supplied via env var or the CLI
@@ -2454,8 +2525,14 @@ async function maybeAskForLlmKey() {
   return true;
 }
 
-// Ask for a key first; only then run the companion wizard.
-maybeAskForLlmKey().then(asked => { if (!asked) maybeOpenWizardOnFirstLoad(); });
+// Unlock first (no-op on an open localhost install), then boot; ask for a
+// model key; only then run the companion wizard.
+switchTab('dashboard');
+ensureAccess().then(() => {
+  connectWebSocket();
+  refreshDashboard();
+  return maybeAskForLlmKey();
+}).then(asked => { if (!asked) maybeOpenWizardOnFirstLoad(); });
 </script>
 
 <!-- ═══ Setup Wizard Modal ═══════════════════════════════════════════════ -->

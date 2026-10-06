@@ -4,7 +4,12 @@ services:
       context: ../..
       dockerfile: deploy/docker/Dockerfile
     ports:
-      - "7788:7788"
+      # Published to localhost only. The dashboard can drive the agent (and,
+      # if you enable it, a shell), so it must not be on the LAN by accident.
+      # To reach it from other machines, set HERANDHIM_WEB_ACCESS_TOKEN in
+      # .env first, then change this to "7788:7788" — or keep it as is and
+      # use an SSH tunnel / VPN.
+      - "127.0.0.1:7788:7788"
     env_file:
       - .env
     volumes:

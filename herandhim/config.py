@@ -222,6 +222,73 @@ def per_group_isolation() -> bool:
     return get_bool("isolation", "perGroup", default=True)
 
 
+# ── Web dashboard exposure ───────────────────────────────────────────────────
+#
+# The dashboard drives the agent, which can run shell commands and read the
+# install's memory and keys. It therefore binds to loopback unless told
+# otherwise, and any non-loopback bind must be gated by an access token.
+
+DEFAULT_WEB_HOST = "127.0.0.1"
+DEFAULT_WEB_PORT = 7788
+
+_LOOPBACK_NAMES = {"localhost", "127.0.0.1", "::1", "[::1]", "0:0:0:0:0:0:0:1"}
+
+
+def is_loopback_host(host: str) -> bool:
+    """True if binding *host* only accepts connections from this machine."""
+    h = (host or "").strip().lower().strip("[]")
+    if not h:
+        return False
+    if h in _LOOPBACK_NAMES:
+        return True
+    import ipaddress
+    try:
+        return ipaddress.ip_address(h).is_loopback
+    except ValueError:
+        return False
+
+
+def web_host() -> str:
+    """The interface the dashboard binds (``web.host`` / ``HERANDHIM_WEB_HOST``)."""
+    return get_str("web", "host", env="HERANDHIM_WEB_HOST", default=DEFAULT_WEB_HOST).strip() or DEFAULT_WEB_HOST
+
+
+def web_port() -> int:
+    return get_int("web", "port", env="HERANDHIM_WEB_PORT", default=DEFAULT_WEB_PORT)
+
+
+def web_is_loopback() -> bool:
+    """True when the dashboard is reachable only from this machine."""
+    return is_loopback_host(web_host())
+
+
+def web_access_token() -> str:
+    """Shared secret gating the dashboard (``web.accessToken`` /
+    ``HERANDHIM_WEB_ACCESS_TOKEN``). Empty means no token is configured."""
+    return get_str("web", "accessToken", env="HERANDHIM_WEB_ACCESS_TOKEN", default="").strip()
+
+
+def run_command_enabled() -> bool:
+    """Whether the agent may use the ``run_command`` shell tool.
+
+    ``tools.runCommand`` / ``HERANDHIM_TOOLS_RUN_COMMAND``:
+      true / false   explicit
+      "auto"         (default) on only while the dashboard binds loopback.
+                     A network-exposed install — Docker, Fly, ``0.0.0.0`` —
+                     has to opt in; the token gate is the only thing between
+                     the internet and a shell otherwise.
+    """
+    raw = get("tools", "runCommand", env="HERANDHIM_TOOLS_RUN_COMMAND", default="auto")
+    if isinstance(raw, bool):
+        return raw
+    val = str(raw).strip().lower()
+    if val in ("1", "true", "yes", "on", "always"):
+        return True
+    if val in ("0", "false", "no", "off", "never"):
+        return False
+    return web_is_loopback()
+
+
 def group_context_dir(session_id: str) -> Path:
     """Return the per-group context directory for *session_id* (per-tenant).
 

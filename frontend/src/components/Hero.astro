@@ -2,7 +2,7 @@
 import GhIcon from './GhIcon.astro';
 
 const repo = 'https://github.com/ericwang915/HerAndHim';
-const run = 'docker run -e HERANDHIM_OPENROUTER_API_KEY=sk-or-... -p 7788:7788 -v herandhim:/data ghcr.io/ericwang915/herandhim';
+const run = 'docker run -e HERANDHIM_OPENROUTER_API_KEY=sk-or-... -p 127.0.0.1:7788:7788 -v herandhim:/data ghcr.io/ericwang915/herandhim';
 ---
 <section class="hero">
   <div class="container hero__grid">

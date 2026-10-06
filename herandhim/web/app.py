@@ -70,7 +70,12 @@ def _global_scheduler():
         return None
 
 
-def create_app(provider: LLMProvider | None, *, build_provider_fn=None) -> FastAPI:
+def create_app(
+    provider: LLMProvider | None,
+    *,
+    build_provider_fn=None,
+    host: str | None = None,
+) -> FastAPI:
     """Build and return the FastAPI app.
 
     Parameters
@@ -78,14 +83,27 @@ def create_app(provider: LLMProvider | None, *, build_provider_fn=None) -> FastA
     provider          : LLM provider (may be None if not yet configured)
     build_provider_fn : callable that rebuilds the provider from config
                         (used after config save to hot-reload the provider)
+    host              : the interface the server will bind. Decides the auth
+                        policy — see :mod:`herandhim.web.access`. Raises
+                        ``WebAuthError`` for a non-loopback bind without an
+                        access token; defaults to ``config.web_host()``.
     """
     global _provider, _start_time, _build_provider_fn, _fastapi_app
     _provider = provider
     _start_time = time.time()
     _build_provider_fn = build_provider_fn
 
+    from .access import AccessTokenMiddleware, WebAuth, healthz, make_access_routes
+
+    auth = WebAuth.from_config(host if host is not None else config.web_host())
+
     app = FastAPI(title="her & him", docs_url=None, redoc_url=None)
     _fastapi_app = app
+    app.state.auth = auth
+
+    # Innermost middleware: everything under /api and /ws is gated when a
+    # token is configured (always, for a non-loopback bind).
+    app.add_middleware(AccessTokenMiddleware, auth=auth)
 
     # Only needed if you front the dashboard from a different origin.
     origins = [o.strip() for o in
@@ -102,6 +120,11 @@ def create_app(provider: LLMProvider | None, *, build_provider_fn=None) -> FastA
     app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
     app.add_api_route("/", _serve_index, methods=["GET"], response_class=HTMLResponse)
+    access_status, access_unlock, access_lock = make_access_routes(auth)
+    app.add_api_route("/healthz", healthz, methods=["GET"])
+    app.add_api_route("/api/access/status", access_status, methods=["GET"])
+    app.add_api_route("/api/access/unlock", access_unlock, methods=["POST"])
+    app.add_api_route("/api/access/lock", access_lock, methods=["POST"])
     app.add_api_route("/api/user/telegram", _api_user_telegram_get, methods=["GET"])
     app.add_api_route("/api/user/telegram", _api_user_telegram_save, methods=["POST"])
     app.add_api_route("/api/setup/options", _api_setup_options, methods=["GET"])
@@ -670,9 +693,12 @@ async def _api_identity():
         ("Memory", MEMORY_TOOLS),
         ("Cron", CRON_TOOLS),
     ]
+    run_command_on = config.run_command_enabled()
     for group, schemas in tool_groups:
         for s in schemas:
             info = _tool_info(s)
+            if info["name"] == "run_command" and not run_command_on:
+                continue
             info["group"] = group
             tools.append(info)
 

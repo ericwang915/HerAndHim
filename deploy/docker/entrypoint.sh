@@ -21,6 +21,12 @@
 #   HERANDHIM_IMAGE_PROVIDER       optional: gemini|openai|seedream|fal|replicate|
 #                                  sdwebui|comfyui|custom — also inferred from
 #                                  whichever image key is set
+#   HERANDHIM_WEB_ACCESS_TOKEN     dashboard secret. The container binds 0.0.0.0,
+#                                  so one is always enforced: unset, a random
+#                                  token is generated on first boot and printed
+#                                  in the log on every boot
+#   HERANDHIM_TOOLS_RUN_COMMAND    "true" to let the agent run shell commands
+#                                  (off by default in the container)
 #
 # See deploy/local/.env.example for the full list, and render_config.py for
 # exactly how each variable maps onto the file.

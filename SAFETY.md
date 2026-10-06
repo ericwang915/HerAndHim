@@ -102,6 +102,11 @@ Running your own instance makes you the operator:
 - **Do not run a public instance** without understanding that most companion-
   chatbot statutes attach to *operators who make the service available to
   others*, not to people running software for themselves.
+- **Keep the dashboard to yourself.** It binds `127.0.0.1` by default and
+  refuses any other bind without an access token (`web.accessToken` /
+  `HERANDHIM_WEB_ACCESS_TOKEN`); Docker always enforces one. The agent's shell
+  tool is off whenever the dashboard is network-reachable unless you opt in.
+  Details in [SECURITY.md](SECURITY.md).
 
 ## Reporting
 

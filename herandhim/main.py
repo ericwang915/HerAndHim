@@ -285,7 +285,7 @@ def _ensure_configured(config_path: str | None = None) -> None:
         run_onboard(config_path)
     else:
         print("[HerAndHim] No LLM key yet — starting the dashboard in setup mode. "
-              "Open http://localhost:7788 to finish setup.")
+              f"Open http://localhost:{config.web_port()} to finish setup.")
 
 
 # ── Subcommand handlers ─────────────────────────────────────────────────────
@@ -325,12 +325,26 @@ def _run_foreground(args) -> None:
         print("Install with: pip install herandhim")
         return
 
+    from .web.access import WebAuthError
     from .web.app import create_app
 
-    host = config.get_str("web", "host", default="0.0.0.0")
-    port = config.get_int("web", "port", default=7788)
+    host = config.web_host()
+    port = config.web_port()
 
-    app = create_app(provider, build_provider_fn=_build_provider)
+    try:
+        app = create_app(provider, build_provider_fn=_build_provider, host=host)
+    except WebAuthError as exc:
+        print(f"[HerAndHim] Refusing to start: {exc}", file=sys.stderr)
+        sys.exit(2)
+
+    if not config.is_loopback_host(host):
+        print(f"[HerAndHim] Dashboard bound to {host} (reachable from other machines) — "
+              "access token enforced.")
+    elif config.web_access_token():
+        print("[HerAndHim] Dashboard access token enforced.")
+    if not config.run_command_enabled():
+        print("[HerAndHim] run_command tool is off (tools.runCommand=auto on a "
+              "network-exposed dashboard). Set tools.runCommand: true to enable it.")
 
     # Auto-start the Telegram bot when a token is configured. Without one, the
     # web dashboard runs on its own (you can add a token later in the browser).
