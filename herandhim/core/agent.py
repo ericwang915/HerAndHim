@@ -57,6 +57,7 @@ from .tools import (
     WEB_SEARCH_TOOL,
     WISHLIST_TOOLS,
     configure_venv,
+    run_command_available,
     set_sandbox,
 )
 
@@ -449,10 +450,17 @@ class Agent:
             f"answer in the user's language if it differs from {_lang_label}. Single loanwords "
             f"and emoji are fine; whole phrases in any other language are not."
         )
+        primitives_line = (
+            "- **Primitives**: `run_command`, `read_file`, `write_file`"
+            if run_command_available() else
+            "- **Primitives**: `read_file`, `write_file` (no shell: `run_command` is "
+            "disabled on this install — skills that need to run a script are unavailable; "
+            "say so plainly if asked, in character)"
+        )
         system_msg = f"""{identity_lead}{bot_name}{lang_directive}{soul_section}{persona_section}{profile_section}{tools_section}
 
 ### Tools
-- **Primitives**: `run_command`, `read_file`, `write_file`
+{primitives_line}
 - **Skills** — call `use_skill(name)` to activate. Catalog:
 {skill_catalog}
 - **Memory**: `remember(key,val)`, `recall(query)`, `memory_get(path)`, `memory_list_files()`, `forget(key)`, `update_index(content)`
@@ -817,7 +825,12 @@ Don't repeat this if `bot_name` already exists in memory.
             "agent": { "wishlistEnabled": false, "bucketListEnabled": false }
         Anthropic's prompt cache absorbs the cost, but other providers don't.
         """
-        tools = PRIMITIVE_TOOLS + SKILL_TOOLS + META_SKILL_TOOLS + MEMORY_TOOLS
+        primitives = PRIMITIVE_TOOLS
+        if not run_command_available():
+            # Network-exposed install without an explicit opt-in: the model
+            # never sees the shell tool (and tools.run_command refuses anyway).
+            primitives = [t for t in PRIMITIVE_TOOLS if t["function"]["name"] != "run_command"]
+        tools = primitives + SKILL_TOOLS + META_SKILL_TOOLS + MEMORY_TOOLS
         if config.get_bool("agent", "wishlistEnabled", default=True):
             tools = tools + WISHLIST_TOOLS
         if config.get_bool("agent", "bucketListEnabled", default=True):

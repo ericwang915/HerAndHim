@@ -3,7 +3,8 @@ Built-in tool implementations and OpenAI-compatible schemas.
 
 Structure
 ---------
-  PRIMITIVE_TOOLS   — run_command / read_file / write_file / send_file / send_voice (always available)
+  PRIMITIVE_TOOLS   — run_command / read_file / write_file / send_file / send_voice
+                      (run_command only when run_command_available() — see config.run_command_enabled)
   SKILL_TOOLS       — use_skill / list_skill_resources (always available)
   META_SKILL_TOOLS  — create_skill (always available — "god mode" skill creation)
   MEMORY_TOOLS      — remember / recall (always available)
@@ -261,6 +262,26 @@ def _check_command_safety(command: str) -> str | None:
     return None
 
 
+RUN_COMMAND_DISABLED_MSG = (
+    "Error: run_command is disabled on this install. It is off by default when "
+    "the web dashboard is reachable from other machines; the operator can turn "
+    "it on with tools.runCommand: true in herandhim.json "
+    "(or HERANDHIM_TOOLS_RUN_COMMAND=true)."
+)
+
+
+def run_command_available() -> bool:
+    """Whether ``run_command`` is offered to the model and executes.
+
+    Decided by ``config.run_command_enabled()``: an explicit ``tools.runCommand``
+    wins; otherwise the shell is only available while the dashboard binds
+    loopback. The denylist in :func:`_check_command_safety` is defence in
+    depth, not an authorization boundary — this switch is.
+    """
+    from .. import config as _cfg
+    return _cfg.run_command_enabled()
+
+
 def run_command(command: str) -> str:
     """Execute a shell command and return combined stdout/stderr.
 
@@ -269,9 +290,15 @@ def run_command(command: str) -> str:
     The working directory is set to ``~/.herandhim/context/files/`` so
     that any files created or downloaded by the command land there.
 
-    A pre-flight safety scan refuses commands that reach into other
-    tenants' directories or perform obviously destructive operations.
+    Refuses outright when :func:`run_command_available` is false — the
+    schema is withheld from the model in that case, but a hallucinated call
+    must not slip through either.  A pre-flight safety scan then refuses
+    commands that reach into other tenants' directories or perform
+    obviously destructive operations.
     """
+    if not run_command_available():
+        logger.warning("[run_command] refused (tool disabled): %s", command[:120])
+        return RUN_COMMAND_DISABLED_MSG
     refusal = _check_command_safety(command)
     if refusal:
         logger.warning("[run_command] %s — refused: %s", command[:120], refusal)
