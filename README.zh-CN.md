@@ -50,10 +50,10 @@
 ## 🚀 一条命令跑起来
 
 ```bash
-docker run -e HERANDHIM_OPENROUTER_API_KEY=sk-or-... -p 7788:7788 -v herandhim:/data ghcr.io/ericwang915/herandhim
+docker run -e HERANDHIM_OPENROUTER_API_KEY=sk-or-... -p 127.0.0.1:7788:7788 -v herandhim:/data ghcr.io/ericwang915/herandhim
 ```
 
-打开 **http://localhost:7788**，在向导里捏好你的伴侣，就可以聊了。**只需要一个文本大模型的 key** —— 而且会自动识别，`HERANDHIM_OPENAI_API_KEY`、`HERANDHIM_DEEPSEEK_API_KEY`、`HERANDHIM_CLAUDE_API_KEY`、`HERANDHIM_QWEN_API_KEY`、`HERANDHIM_GLM_API_KEY`…… 任意一个都行。希望数据完全不出本机？指向 [Ollama](https://ollama.com)，连 key 都不用。想让她住进你手机？再加一个 Telegram bot token。
+打开 **http://localhost:7788**，粘贴容器启动时打印的**访问令牌**（或用 `-e HERANDHIM_WEB_ACCESS_TOKEN=...` 自己指定），在向导里捏好你的伴侣，就可以聊了。端口默认只发布到本机；要从其他机器访问，请先看[安全与自托管责任](#️-安全与自托管责任)。**只需要一个文本大模型的 key** —— 而且会自动识别，`HERANDHIM_OPENAI_API_KEY`、`HERANDHIM_DEEPSEEK_API_KEY`、`HERANDHIM_CLAUDE_API_KEY`、`HERANDHIM_QWEN_API_KEY`、`HERANDHIM_GLM_API_KEY`…… 任意一个都行。希望数据完全不出本机？指向 [Ollama](https://ollama.com)，连 key 都不用。想让她住进你手机？再加一个 Telegram bot token。
 
 ### 更喜欢 Python？直接装
 
@@ -240,6 +240,8 @@ HerAndHim 是**面向成年人（18+）的关系模拟引擎** —— 一个情�
 - **图像内容守卫**（`herandhim/core/image_gen/guard.py`）—— 在唯一入口拒绝违法生成。
 
 自托管意味着你就是运营者：所在地关于 AI 聊天服务、数据保护、年龄限制的法律由你负责。
+
+**面板的网络暴露。** 面板就是智能体的控制台：能打开它的人可以以你的身份聊天、读她的记忆、改配置，（开启时）还能执行 shell 命令。因此它**默认只监听本机**（`web.host` 为 `127.0.0.1`），Docker 的端口也只发布到 `127.0.0.1`。一旦不是仅本机 —— `0.0.0.0`、Fly.io、局域网/VPS —— 就**必须**设置访问令牌 `web.accessToken` / `HERANDHIM_WEB_ACCESS_TOKEN`，否则拒绝启动；Docker 容器内部监听 `0.0.0.0`，所以始终强制令牌（未设置时首次启动会随机生成一个并打印到日志）。智能体的 shell 工具 `run_command` 在非本机监听时**默认关闭**（含 Docker），需要运行脚本类技能时用 `"tools": { "runCommand": true }` 或 `HERANDHIM_TOOLS_RUN_COMMAND=true` 显式开启。
 
 📄 **[SAFETY.md](SAFETY.md)** —— 完整的危机协议、内容红线与反暗黑模式设计
 🔒 **[SECURITY.md](SECURITY.md)** —— 加固建议与漏洞报告

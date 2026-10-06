@@ -6,7 +6,7 @@ const ways = [
   {
     tag: 'Docker',
     note: 'Nothing to install but Docker.',
-    cmd: 'docker run -e HERANDHIM_OPENROUTER_API_KEY=sk-or-... \\\n  -p 7788:7788 -v herandhim:/data \\\n  ghcr.io/ericwang915/herandhim',
+    cmd: 'docker run -e HERANDHIM_OPENROUTER_API_KEY=sk-or-... \\\n  -p 127.0.0.1:7788:7788 -v herandhim:/data \\\n  ghcr.io/ericwang915/herandhim',
   },
   {
     tag: 'Python',

@@ -50,11 +50,14 @@
 ## 🚀 Run it (one command)
 
 ```bash
-docker run -e HERANDHIM_OPENROUTER_API_KEY=sk-or-... -p 7788:7788 -v herandhim:/data ghcr.io/ericwang915/herandhim
+docker run -e HERANDHIM_OPENROUTER_API_KEY=sk-or-... -p 127.0.0.1:7788:7788 -v herandhim:/data ghcr.io/ericwang915/herandhim
 ```
 
-Open **http://localhost:7788**, design your companion in the wizard, and start
-talking. **One text-LLM key is all you need** — it's auto-detected, so any of
+Open **http://localhost:7788**, paste the **access token** the container prints
+on startup (or set your own with `-e HERANDHIM_WEB_ACCESS_TOKEN=...`), design
+your companion in the wizard, and start talking. The port is published to
+localhost only — see [Exposing the dashboard](#exposing-the-dashboard) before
+you open it to anything else. **One text-LLM key is all you need** — it's auto-detected, so any of
 `HERANDHIM_OPENAI_API_KEY`, `HERANDHIM_DEEPSEEK_API_KEY`, `HERANDHIM_CLAUDE_API_KEY`,
 `HERANDHIM_GEMINI_API_KEY`, `HERANDHIM_GROK_API_KEY`, `HERANDHIM_QWEN_API_KEY`… works the same
 way. Prefer nothing leaving your machine? Point it at [Ollama](https://ollama.com)
@@ -332,7 +335,11 @@ All runtime data lives under `~/.herandhim/`:
   "elevenlabs": { "apiKey": "" },          // voice replies via cloud (optional)
   "tts": { "provider": "auto" },           // or "local" — see Voice notes below
   "tavily":   { "apiKey": "" },            // web search (optional)
-  "web": { "host": "0.0.0.0", "port": 7788 },
+  "web": {
+    "host": "127.0.0.1", "port": 7788,     // loopback only by default
+    "accessToken": ""                      // required for any other host — see "Exposing the dashboard"
+  },
+  "tools": { "runCommand": "auto" },       // agent shell: on for loopback, off when exposed
   "agent": {
     "autoCompactThreshold": 0,             // auto-compaction token threshold (0 = default 10000)
     "verbose": false
@@ -658,6 +665,29 @@ Two guardrails ship enabled and are deliberately not configuration flags:
 
 If you self-host, you are the operator: local laws on AI chat services, data
 protection, and age restrictions are your responsibility.
+
+### Exposing the dashboard
+
+The dashboard is a control panel for the agent — whoever reaches it can chat
+as you, read her memories, change the config, and (when enabled) run shell
+commands. So it is **local-only by default** and gated the moment it isn't:
+
+| Where | Default | What's enforced |
+|---|---|---|
+| `pip install` / `herandhim start` | `web.host` = `127.0.0.1` | nothing — it's your machine. Set `web.accessToken` if you want a prompt anyway. |
+| Docker / `docker compose` | port published to `127.0.0.1` only | an access token, always (the container binds `0.0.0.0` inside). Printed in the log on startup, or set `HERANDHIM_WEB_ACCESS_TOKEN`. |
+| `web.host: 0.0.0.0`, Fly.io, a LAN/VPS | — | **refuses to start** without `web.accessToken` / `HERANDHIM_WEB_ACCESS_TOKEN`. |
+
+The token is a shared secret: paste it once in the browser (it becomes an
+HttpOnly cookie) or send `Authorization: Bearer <token>` from scripts. Make
+it long and random — `openssl rand -base64 32` is fine.
+
+The agent's shell tool (`run_command`) is **off by default whenever the
+dashboard isn't loopback-only**, including in Docker. Skills that run a
+script (weather, horoscope, news, local TTS…) need it; turn it back on with
+`"tools": { "runCommand": true }` or `HERANDHIM_TOOLS_RUN_COMMAND=true` once
+the token is in place. The command denylist in `core/tools.py` is defence in
+depth, not a substitute for authentication.
 
 📄 **[SAFETY.md](SAFETY.md)** — the full crisis protocol, content limits, and
 anti-dark-pattern design decisions.
