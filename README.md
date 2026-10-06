@@ -726,5 +726,6 @@ modifications. (This keeps hosted forks honest.)
 ---
 
 <p align="center">
-  <sub>Made with 💕 by HerAndHim</sub>
+  <sub>Made with 💕 by HerAndHim</sub><br>
+  <sub>From the team behind <a href="https://audiee.ai">Audiee.ai</a> — private AI meeting notes for Mac with a long-term memory of every meeting.</sub>
 </p>

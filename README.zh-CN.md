@@ -269,5 +269,6 @@ HerAndHim 靠 Star 和口碑被找到，不打广告。如果这就是你希望�
 ---
 
 <p align="center">
-  <sub>Made with 💕 by HerAndHim</sub>
+  <sub>Made with 💕 by HerAndHim</sub><br>
+  <sub>来自 <a href="https://audiee.ai">Audiee.ai</a> 团队。Audiee.ai 是 Mac 上的私密 AI 会议纪要，记得你开过的每一场会。</sub>
 </p>
