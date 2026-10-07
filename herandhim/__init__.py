@@ -6,7 +6,7 @@ from .core.llm.base import LLMProvider
 from .core.llm.openai_compatible import OpenAICompatibleProvider
 from .init import init
 
-__version__ = "1.0.0"
+__version__ = "0.3.0"
 __all__ = [
     "Agent",
     "LLMProvider",
