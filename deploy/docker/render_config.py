@@ -30,6 +30,8 @@ Env vars (the container's ``.env.example`` documents them all):
   HERANDHIM_REPLY_IN_KIND_VOICE                        voice note in → voice note back
   HERANDHIM_WEB_ACCESS_TOKEN                           dashboard secret (random one minted if unset)
   HERANDHIM_TOOLS_RUN_COMMAND                          "true" to allow the agent a shell
+  HERANDHIM_TOOLS_RUN_SKILL_SCRIPT                     bundled skill scripts always run; "true"
+                                                       also allows skills created on this install
   PORT
 
 """
@@ -257,8 +259,12 @@ def render(existing: dict | None, environ: Mapping[str, str] = os.environ) -> di
         _set(cfg, ("web", "accessToken"), secrets.token_urlsafe(24))
 
     # The shell tool is off by default on a network-exposed dashboard; opt in
-    # with HERANDHIM_TOOLS_RUN_COMMAND=true (skills that run scripts need it).
+    # with HERANDHIM_TOOLS_RUN_COMMAND=true. Bundled skill scripts (selfie,
+    # weather, TTS, onboarding, …) do not need it — they run through the
+    # argv-only run_skill_script tool. HERANDHIM_TOOLS_RUN_SKILL_SCRIPT=true
+    # additionally lets scripts the agent wrote itself (create_skill) run.
     put(("tools", "runCommand"), "HERANDHIM_TOOLS_RUN_COMMAND")
+    put(("tools", "runSkillScript"), "HERANDHIM_TOOLS_RUN_SKILL_SCRIPT")
 
     return cfg
 

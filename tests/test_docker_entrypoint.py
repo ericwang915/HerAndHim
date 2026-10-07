@@ -213,6 +213,10 @@ def test_run_command_opt_in_comes_in_via_env(rc):
     assert rc.render(None, {"HERANDHIM_TOOLS_RUN_COMMAND": "true"})["tools"] == {"runCommand": "true"}
 
 
+def test_skill_script_opt_in_comes_in_via_env(rc):
+    assert rc.render(None, {"HERANDHIM_TOOLS_RUN_SKILL_SCRIPT": "true"})["tools"] == {"runSkillScript": "true"}
+
+
 def test_main_prints_the_token_and_locks_the_file_down(rc, tmp_path, capsys):
     path = tmp_path / "herandhim.json"
     assert rc.main([str(path)]) == 0

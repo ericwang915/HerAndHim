@@ -37,6 +37,20 @@ HerAndHim stores intimate conversation data. If you run your own instance:
   going off-script; it is not what keeps strangers out. The tool is withheld
   from the model (and refuses to execute) whenever the dashboard is not
   loopback-only, unless the operator opts in with `tools.runCommand: true`.
+- **`run_skill_script` is the only code-execution path on an exposed install,
+  and it is an allowlist, not a shell.** It execs one `.py`/`.sh` file that
+  lives inside an installed skill directory, through the project's Python or
+  `bash`, with an argv list — never `shell=True` — and with the same secret
+  scrubbing and 60 s timeout as `run_command`. While the dashboard is reachable
+  from other machines it runs **only the scripts that ship inside the package**
+  (`herandhim/templates/skills`); anything written into the install's own
+  `context/skills` by `create_skill` or `write_file` is refused, so skill
+  creation cannot be chained back into arbitrary code execution. Those
+  install-local scripts run only while the shell itself is available (loopback,
+  `tools.runCommand: true`) or with the narrower `tools.runSkillScript: true`.
+  The file-writing tools refuse to touch the installed package, so the bundled
+  scripts cannot be edited through the agent either. `tools.runSkillScript:
+  false` withholds the tool entirely.
 - The crisis-safety guardrail (`herandhim/core/safety.py`) and the image
   content guard (`herandhim/core/image_gen/guard.py`) ship **enabled and are
   not configuration-removable by design**. Forks that strip them are on

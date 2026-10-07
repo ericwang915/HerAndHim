@@ -26,7 +26,10 @@
 #                                  token is generated on first boot and printed
 #                                  in the log on every boot
 #   HERANDHIM_TOOLS_RUN_COMMAND    "true" to let the agent run shell commands
-#                                  (off by default in the container)
+#                                  (off by default in the container; the bundled
+#                                  skill scripts run without it via run_skill_script)
+#   HERANDHIM_TOOLS_RUN_SKILL_SCRIPT  "true" to also let skills the agent created
+#                                  on this install run their scripts
 #
 # See deploy/local/.env.example for the full list, and render_config.py for
 # exactly how each variable maps onto the file.
