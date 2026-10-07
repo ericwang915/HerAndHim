@@ -30,24 +30,26 @@ companion reminisce in-character ("还记得那天阳台喝咖啡吗？").
 
 ## Commands
 
+Scripts run through the `run_skill_script` tool — pass the script path and an argv list (one item per argument, no shell quoting). Never try to run them with `run_command`.
+
 ### Recap the most recent selfies
 
-```bash
-python {skill_path}/look_back.py
+```
+run_skill_script(script="{skill_path}/look_back.py")
 ```
 
 ### Filter to a specific time range
 
-```bash
-python {skill_path}/look_back.py --days 7    # last week
-python {skill_path}/look_back.py --days 30   # last month
-python {skill_path}/look_back.py --limit 3   # only show 3 most recent
+```
+run_skill_script(script="{skill_path}/look_back.py", args=["--days", "7"])    # last week
+run_skill_script(script="{skill_path}/look_back.py", args=["--days", "30"])   # last month
+run_skill_script(script="{skill_path}/look_back.py", args=["--limit", "3"])   # only show 3 most recent
 ```
 
 ### Pick one to actually send
 
-```bash
-python {skill_path}/look_back.py --send --limit 1
+```
+run_skill_script(script="{skill_path}/look_back.py", args=["--send", "--limit", "1"])
 ```
 
 ## Notes

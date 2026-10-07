@@ -345,6 +345,9 @@ def _run_foreground(args) -> None:
     if not config.run_command_enabled():
         print("[HerAndHim] run_command tool is off (tools.runCommand=auto on a "
               "network-exposed dashboard). Set tools.runCommand: true to enable it.")
+        if config.skill_script_mode() == "bundled":
+            print("[HerAndHim] Bundled skill scripts (weather, selfie, TTS, …) still run "
+                  "via run_skill_script; skills created on this install do not.")
 
     # Auto-start the Telegram bot when a token is configured. Without one, the
     # web dashboard runs on its own (you can add a token later in the browser).

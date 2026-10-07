@@ -30,12 +30,14 @@ from a book, a thrown-out aphorism.
 
 ## Commands
 
-```bash
-python {skill_path}/mood_share.py --mood "miss them"
-python {skill_path}/mood_share.py --mood "想念"
-python {skill_path}/mood_share.py --mood "happy"     # will return None — light moods don't need this
-python {skill_path}/mood_share.py --lang zh          # bias toward Chinese sources
-python {skill_path}/mood_share.py --lang en
+Scripts run through the `run_skill_script` tool — pass the script path and an argv list (one item per argument, no shell quoting). Never try to run them with `run_command`.
+
+```
+run_skill_script(script="{skill_path}/mood_share.py", args=["--mood", "miss them"])
+run_skill_script(script="{skill_path}/mood_share.py", args=["--mood", "想念"])
+run_skill_script(script="{skill_path}/mood_share.py", args=["--mood", "happy"])     # will return None — light moods don't need this
+run_skill_script(script="{skill_path}/mood_share.py", args=["--lang", "zh"])          # bias toward Chinese sources
+run_skill_script(script="{skill_path}/mood_share.py", args=["--lang", "en"])
 ```
 
 ## Output format

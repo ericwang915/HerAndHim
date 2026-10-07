@@ -28,21 +28,23 @@ Get current date, time, timezone info, and timezone conversions.
 
 ## Usage/Commands
 
-```bash
+Scripts run through the `run_skill_script` tool — pass the script path and an argv list (one item per argument, no shell quoting). Never try to run them with `run_command`.
+
+```
 # Current local time
-python {skill_path}/time_util.py
+run_skill_script(script="{skill_path}/time_util.py")
 
 # Time in a specific timezone
-python {skill_path}/time_util.py --tz "America/New_York"
+run_skill_script(script="{skill_path}/time_util.py", args=["--tz", "America/New_York"])
 
 # List common timezone names
-python {skill_path}/time_util.py --list-tz
+run_skill_script(script="{skill_path}/time_util.py", args=["--list-tz"])
 
 # Unix timestamp
-python {skill_path}/time_util.py --unix
+run_skill_script(script="{skill_path}/time_util.py", args=["--unix"])
 
 # Convert a time between timezones
-python {skill_path}/time_util.py --convert "2026-03-01 14:30" --from-tz "Asia/Shanghai" --to-tz "America/New_York"
+run_skill_script(script="{skill_path}/time_util.py", args=["--convert", "2026-03-01 14:30", "--from-tz", "Asia/Shanghai", "--to-tz", "America/New_York"])
 ```
 
 ## Notes

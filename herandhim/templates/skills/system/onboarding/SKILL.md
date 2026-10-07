@@ -32,22 +32,31 @@ First-time setup wizard that guides users through configuring their agent identi
 3. **Focus area**: "What area would you like me to focus on? (e.g. software development, finance, research, daily assistant, creative writing)"
 4. **Language preference**: "What language do you prefer I respond in? (English, Chinese, etc.)"
 
+Both files are written by the bundled script through the `run_skill_script`
+tool (not a shell) — each flag and each value is its own list item:
+
 **Write soul.md:**
-```bash
-python {skill_path}/write_identity.py --type soul \
-  --user-name "NAME" \
-  --personality "PERSONALITY" \
-  --focus "FOCUS" \
-  --language "LANGUAGE"
+```
+run_skill_script(
+  script="{skill_path}/write_identity.py",
+  args=["--type", "soul",
+        "--user-name", "NAME",
+        "--personality", "PERSONALITY",
+        "--focus", "FOCUS",
+        "--language", "LANGUAGE"]
+)
 ```
 
 **Write persona.md:**
-```bash
-python {skill_path}/write_identity.py --type persona \
-  --user-name "NAME" \
-  --personality "PERSONALITY" \
-  --focus "FOCUS" \
-  --language "LANGUAGE"
+```
+run_skill_script(
+  script="{skill_path}/write_identity.py",
+  args=["--type", "persona",
+        "--user-name", "NAME",
+        "--personality", "PERSONALITY",
+        "--focus", "FOCUS",
+        "--language", "LANGUAGE"]
+)
 ```
 
 After writing, tell the user: "Setup complete! Your preferences have been saved. Use `/clear` to start a fresh conversation with your new identity, or just keep chatting."
@@ -55,4 +64,4 @@ After writing, tell the user: "Setup complete! Your preferences have been saved.
 ## Notes
 
 - Uses bundled `write_identity.py` to generate soul.md and persona.md
-- Files are written to `context/soul/SOUL.md` and `context/persona/persona.md`
+- Files are written to `context/soul/SOUL.md` and `context/persona/persona.md` under the install home (`HERANDHIM_HOME`, else `~/.herandhim`)

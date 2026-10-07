@@ -59,28 +59,30 @@ Or set environment variables: `TWITTER_CONSUMER_KEY`, `TWITTER_CONSUMER_SECRET`,
 
 ## Commands
 
+Scripts run through the `run_skill_script` tool — pass the script path and an argv list (one item per argument, no shell quoting). Never try to run them with `run_command`.
+
 ### Post a new tweet
 
-```bash
-python {skill_path}/tweet.py post "Just shipped a thing! 🚀"
+```
+run_skill_script(script="{skill_path}/tweet.py", args=["post", "Just shipped a thing! 🚀"])
 ```
 
 ### Reply to a tweet
 
-```bash
-python {skill_path}/tweet.py post "Totally agree!" --reply-to 1234567890123456789
+```
+run_skill_script(script="{skill_path}/tweet.py", args=["post", "Totally agree!", "--reply-to", "1234567890123456789"])
 ```
 
 ### Retweet (boost / share) someone else's tweet
 
-```bash
-python {skill_path}/tweet.py retweet 1234567890123456789
+```
+run_skill_script(script="{skill_path}/tweet.py", args=["retweet", "1234567890123456789"])
 ```
 
 ### Delete one of your own tweets
 
-```bash
-python {skill_path}/tweet.py delete 1234567890123456789
+```
+run_skill_script(script="{skill_path}/tweet.py", args=["delete", "1234567890123456789"])
 ```
 
 ## Notes

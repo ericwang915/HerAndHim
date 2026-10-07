@@ -28,18 +28,20 @@ Fetch current weather and forecasts via Open-Meteo (Python script) or wttr.in (c
 
 ## Usage/Commands
 
-### Option A — Python script (Open-Meteo)
+### Option A — Python script (Open-Meteo) via `run_skill_script`
 
-```bash
-python {skill_path}/weather.py "City Name" [options]
+```
+run_skill_script(script="{skill_path}/weather.py", args=["City Name"])
+run_skill_script(script="{skill_path}/weather.py", args=["City Name", "--forecast", "3", "--units", "imperial"])
 ```
 
+The first positional arg is the city; every option is its own list item.
 Options:
 - `--forecast 3` — include N-day forecast (default: current only)
 - `--format json` — output as JSON (default: human-readable text)
 - `--units imperial` — use Fahrenheit/mph (default: metric)
 
-### Option B — wttr.in (curl, no Python needed)
+### Option B — wttr.in (curl; only when the `run_command` shell tool is available)
 
 ```bash
 # Current weather for a city
@@ -57,9 +59,9 @@ curl -s "wttr.in/CityName?2"
 
 ### Examples
 
-- "What's the weather in Tokyo?" → `python {skill_path}/weather.py "Tokyo"` or `curl -s wttr.in/Tokyo`
-- "5-day forecast for New York" → `python {skill_path}/weather.py "New York" --forecast 5`
-- "Weather in Paris in Fahrenheit" → `python {skill_path}/weather.py "Paris" --units imperial`
+- "What's the weather in Tokyo?" → `run_skill_script(script="{skill_path}/weather.py", args=["Tokyo"])` (or `curl -s wttr.in/Tokyo` if you have a shell)
+- "5-day forecast for New York" → `run_skill_script(script="{skill_path}/weather.py", args=["New York", "--forecast", "5"])`
+- "Weather in Paris in Fahrenheit" → `run_skill_script(script="{skill_path}/weather.py", args=["Paris", "--units", "imperial"])`
 
 ## Notes
 

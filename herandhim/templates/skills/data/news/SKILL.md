@@ -37,16 +37,18 @@ web_search(query="latest news about <topic>", topic="news", max_results=10)
 
 ### Option B — Bundled script (works without Tavily)
 
-```bash
-python {skill_path}/search_news.py "topic" [--max 10]
+```
+run_skill_script(script="{skill_path}/search_news.py", args=["topic"])
+run_skill_script(script="{skill_path}/search_news.py", args=["topic", "--max", "10"])
 ```
 
 ### Examples
 
-- "What's happening in the tech industry today?" → web_search or `search_news.py "tech industry"`
-- "Give me the latest AI news" → web_search or `search_news.py "AI artificial intelligence"`
+- "What's happening in the tech industry today?" → web_search or `run_skill_script(script="{skill_path}/search_news.py", args=["tech industry"])`
+- "Give me the latest AI news" → web_search or `run_skill_script(script="{skill_path}/search_news.py", args=["AI artificial intelligence"])`
 
 ## Notes
 
 - Tavily (web_search) is preferred when configured in herandhim.json
 - search_news.py uses DuckDuckGo and requires no API key
+- Run scripts with the `run_skill_script` tool (argv list) — not through a shell

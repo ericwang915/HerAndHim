@@ -50,22 +50,24 @@ Or set `ARK_API_KEY` environment variable.
 
 ## Commands
 
+Scripts run through the `run_skill_script` tool — pass the script path and an argv list (one item per argument, no shell quoting). Never try to run them with `run_command`.
+
 ### Take a selfie reflecting the current scene
 
-```bash
-python {skill_path}/take_selfie.py
+```
+run_skill_script(script="{skill_path}/take_selfie.py")
 ```
 
 ### With a scene hint
 
-```bash
-python {skill_path}/take_selfie.py --hint "刚画完水彩，举起来给镜头看"
+```
+run_skill_script(script="{skill_path}/take_selfie.py", args=["--hint", "刚画完水彩，举起来给镜头看"])
 ```
 
 ### Override model
 
-```bash
-python {skill_path}/take_selfie.py --model seedream-5-0-260128
+```
+run_skill_script(script="{skill_path}/take_selfie.py", args=["--model", "seedream-5-0-260128"])
 ```
 
 ## Notes

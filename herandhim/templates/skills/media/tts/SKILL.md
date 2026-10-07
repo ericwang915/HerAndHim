@@ -29,8 +29,10 @@ Convert text to a natural voice message and send it as a playable voice note.
 
 ## Usage
 
-```bash
-python {skill_path}/speak.py "想你了宝贝～晚安" --output voice.mp3
+Scripts run through the `run_skill_script` tool — pass the script path and an argv list (one item per argument, no shell quoting). Never try to run them with `run_command`.
+
+```
+run_skill_script(script="{skill_path}/speak.py", args=["想你了宝贝～晚安", "--output", "voice.mp3"])
 ```
 
 Then deliver with the `send_voice` tool (playable voice bubble), not
@@ -38,15 +40,15 @@ Then deliver with the `send_voice` tool (playable voice bubble), not
 
 ### Options
 
-```bash
+```
 # Force the local engine (Piper — offline, no key; needs herandhim[tts-local])
-python {skill_path}/speak.py "早安呀" --engine local --output voice.ogg
+run_skill_script(script="{skill_path}/speak.py", args=["早安呀", "--engine", "local", "--output", "voice.ogg"])
 
 # Custom ElevenLabs voice ID
-python {skill_path}/speak.py "早安呀" --voice ByhETIclHirOlWnWKhHc --output voice.mp3
+run_skill_script(script="{skill_path}/speak.py", args=["早安呀", "--voice", "ByhETIclHirOlWnWKhHc", "--output", "voice.mp3"])
 
 # Last-resort fallback via gTTS (online, robotic)
-python {skill_path}/speak.py "你好" --engine gtts --lang zh --output voice.mp3
+run_skill_script(script="{skill_path}/speak.py", args=["你好", "--engine", "gtts", "--lang", "zh", "--output", "voice.mp3"])
 ```
 
 ## Configuration

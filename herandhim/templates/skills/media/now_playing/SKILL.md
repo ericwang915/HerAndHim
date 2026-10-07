@@ -31,25 +31,27 @@ the user can actually play it.
 
 ## Commands
 
+Scripts run through the `run_skill_script` tool — pass the script path and an argv list (one item per argument, no shell quoting). Never try to run them with `run_command`.
+
 ### Pick something for the current moment
 
-```bash
-python {skill_path}/now_playing.py
+```
+run_skill_script(script="{skill_path}/now_playing.py")
 ```
 
 ### Constrain by mood
 
-```bash
-python {skill_path}/now_playing.py --mood "晚上一个人喝酒"
-python {skill_path}/now_playing.py --mood "工作摸鱼"
-python {skill_path}/now_playing.py --mood "想念对方"
+```
+run_skill_script(script="{skill_path}/now_playing.py", args=["--mood", "晚上一个人喝酒"])
+run_skill_script(script="{skill_path}/now_playing.py", args=["--mood", "工作摸鱼"])
+run_skill_script(script="{skill_path}/now_playing.py", args=["--mood", "想念对方"])
 ```
 
 ### Constrain by genre
 
-```bash
-python {skill_path}/now_playing.py --genre indie
-python {skill_path}/now_playing.py --genre city-pop
+```
+run_skill_script(script="{skill_path}/now_playing.py", args=["--genre", "indie"])
+run_skill_script(script="{skill_path}/now_playing.py", args=["--genre", "city-pop"])
 ```
 
 ## Notes

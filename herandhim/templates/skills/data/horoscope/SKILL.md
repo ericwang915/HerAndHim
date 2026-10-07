@@ -35,25 +35,27 @@ voice and structure differ by culture:
 
 ## Commands
 
+Scripts run through the `run_skill_script` tool — pass the script path and an argv list (one item per argument, no shell quoting). Never try to run them with `run_command`.
+
 ### Today's reading for the agent's default culture
 
-```bash
-python {skill_path}/horoscope.py
+```
+run_skill_script(script="{skill_path}/horoscope.py")
 ```
 
 ### Override the culture for one call
 
-```bash
-python {skill_path}/horoscope.py --culture cn
-python {skill_path}/horoscope.py --culture en --sign aries
-python {skill_path}/horoscope.py --culture jp --sign 牡羊座
-python {skill_path}/horoscope.py --culture in --sign mesha
+```
+run_skill_script(script="{skill_path}/horoscope.py", args=["--culture", "cn"])
+run_skill_script(script="{skill_path}/horoscope.py", args=["--culture", "en", "--sign", "aries"])
+run_skill_script(script="{skill_path}/horoscope.py", args=["--culture", "jp", "--sign", "牡羊座"])
+run_skill_script(script="{skill_path}/horoscope.py", args=["--culture", "in", "--sign", "mesha"])
 ```
 
 ### For the user (so you can read them theirs)
 
-```bash
-python {skill_path}/horoscope.py --culture en --sign libra
+```
+run_skill_script(script="{skill_path}/horoscope.py", args=["--culture", "en", "--sign", "libra"])
 ```
 
 ## Resolving the agent's culture

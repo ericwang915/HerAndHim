@@ -58,7 +58,9 @@ from .tools import (
     WISHLIST_TOOLS,
     configure_venv,
     run_command_available,
+    run_skill_script_available,
     set_sandbox,
+    set_skill_script_roots,
 )
 
 logger = logging.getLogger(__name__)
@@ -293,6 +295,9 @@ class Agent:
             for d in ([skills_dirs] if isinstance(skills_dirs, str) else skills_dirs):
                 if d not in self.skills_dirs:
                     self.skills_dirs.append(d)
+        # run_skill_script may only exec files inside these directories (and
+        # only the bundled ones unless config.skill_script_mode() == "all").
+        set_skill_script_roots(self.skills_dirs)
 
         # Identity layers
         self.soul_instruction = _load_text_dir_or_file(soul_path, label="Soul")
@@ -450,13 +455,30 @@ class Agent:
             f"answer in the user's language if it differs from {_lang_label}. Single loanwords "
             f"and emoji are fine; whole phrases in any other language are not."
         )
-        primitives_line = (
-            "- **Primitives**: `run_command`, `read_file`, `write_file`"
-            if run_command_available() else
-            "- **Primitives**: `read_file`, `write_file` (no shell: `run_command` is "
-            "disabled on this install — skills that need to run a script are unavailable; "
-            "say so plainly if asked, in character)"
-        )
+        shell_on = run_command_available()
+        scripts_on = run_skill_script_available()
+        if shell_on and scripts_on:
+            primitives_line = (
+                "- **Primitives**: `run_command`, `run_skill_script`, `read_file`, `write_file` "
+                "(run a skill's `{skill_path}/xxx.py` with `run_skill_script(script, args)`, "
+                "not through the shell)"
+            )
+        elif scripts_on:
+            primitives_line = (
+                "- **Primitives**: `run_skill_script`, `read_file`, `write_file` (no shell: "
+                "`run_command` is disabled on this install. Skill scripts still run via "
+                "`run_skill_script(script, args)` — pass the `{skill_path}/xxx.py` path and an "
+                "argv list; anything that needs an arbitrary shell command is unavailable — "
+                "say so plainly if asked, in character)"
+            )
+        elif shell_on:
+            primitives_line = "- **Primitives**: `run_command`, `read_file`, `write_file`"
+        else:
+            primitives_line = (
+                "- **Primitives**: `read_file`, `write_file` (no shell: `run_command` is "
+                "disabled on this install — skills that need to run a script are unavailable; "
+                "say so plainly if asked, in character)"
+            )
         system_msg = f"""{identity_lead}{bot_name}{lang_directive}{soul_section}{persona_section}{profile_section}{tools_section}
 
 ### Tools
@@ -486,7 +508,7 @@ You decide which mode fits. Don't announce the mode name.
 - Minimize search rounds (1-3 max). Combine queries. Don't repeat.
 - Use `recall` when user references past context.
 - Memory auto-loaded at session start. INDEX.md = curated system info.
-- All downloaded/generated files go in the shared files directory (`~/.herandhim/context/files/`). The `run_command` tool uses this as its working directory.
+- All downloaded/generated files go in the shared files directory (`~/.herandhim/context/files/`). The `run_command` and `run_skill_script` tools use this as their working directory.
 - NEVER output tool calls as XML or text. Always use the function calling API.
 
 ### Memory discipline — be a friend, not a stranger
@@ -825,11 +847,14 @@ Don't repeat this if `bot_name` already exists in memory.
             "agent": { "wishlistEnabled": false, "bucketListEnabled": false }
         Anthropic's prompt cache absorbs the cost, but other providers don't.
         """
-        primitives = PRIMITIVE_TOOLS
+        withheld: set[str] = set()
         if not run_command_available():
             # Network-exposed install without an explicit opt-in: the model
             # never sees the shell tool (and tools.run_command refuses anyway).
-            primitives = [t for t in PRIMITIVE_TOOLS if t["function"]["name"] != "run_command"]
+            withheld.add("run_command")
+        if not run_skill_script_available():
+            withheld.add("run_skill_script")
+        primitives = [t for t in PRIMITIVE_TOOLS if t["function"]["name"] not in withheld]
         tools = primitives + SKILL_TOOLS + META_SKILL_TOOLS + MEMORY_TOOLS
         if config.get_bool("agent", "wishlistEnabled", default=True):
             tools = tools + WISHLIST_TOOLS
@@ -1138,7 +1163,8 @@ Don't repeat this if `bot_name` already exists in memory.
         resource_hint = ""
         if resources:
             resource_hint = (
-                "\n\n**Bundled resources** (use `read_file` / `run_command` to access):\n"
+                "\n\n**Bundled resources** (read with `read_file`; run `.py`/`.sh` scripts with "
+                "`run_skill_script(script, args)`):\n"
                 + "\n".join(f"  - `{skill.metadata.path}/{r}`" for r in resources)
             )
 

@@ -28,21 +28,23 @@ Generate random numbers, UUIDs, passwords, and random picks.
 
 ## Usage/Commands
 
-```bash
+Scripts run through the `run_skill_script` tool — pass the script path and an argv list (one item per argument, no shell quoting). Never try to run them with `run_command`.
+
+```
 # Random integer in range
-python {skill_path}/random_util.py --int 1 100
+run_skill_script(script="{skill_path}/random_util.py", args=["--int", "1", "100"])
 
 # Random float in range
-python {skill_path}/random_util.py --float 0.0 1.0
+run_skill_script(script="{skill_path}/random_util.py", args=["--float", "0.0", "1.0"])
 
 # UUID
-python {skill_path}/random_util.py --uuid
+run_skill_script(script="{skill_path}/random_util.py", args=["--uuid"])
 
 # Random password (default 16 chars)
-python {skill_path}/random_util.py --password 20
+run_skill_script(script="{skill_path}/random_util.py", args=["--password", "20"])
 
 # Pick N random items from a comma-separated list
-python {skill_path}/random_util.py --choice "apple,banana,cherry,date" --count 2
+run_skill_script(script="{skill_path}/random_util.py", args=["--choice", "apple,banana,cherry,date", "--count", "2"])
 ```
 
 ## Notes

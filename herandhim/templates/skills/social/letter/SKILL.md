@@ -33,14 +33,15 @@ active channel.
 
 ## Workflow
 
-1. Call `python {skill_path}/letter.py prepare --occasion <tag>` to get a
-   writing brief — current date, recent emotional context, user name, agent name,
+1. Call `run_skill_script(script="{skill_path}/letter.py", args=["prepare", "--occasion", "<tag>"])`
+   to get a writing brief — current date, recent emotional context, user name, agent name,
    and the relationship age.
 2. Using that brief, **write the letter yourself** in your own voice / persona
    (don't paste the brief verbatim — it's a planning artifact).
 3. Save the finished letter:
-   `python {skill_path}/letter.py save --occasion <tag> --content "<full letter>"`
-4. Optional: send it as a file in the active channel with `--send`.
+   `run_skill_script(script="{skill_path}/letter.py", args=["save", "--occasion", "<tag>", "--content", "<full letter>"])`
+   — the letter is one list item, however long; no quoting or escaping needed.
+4. Optional: send it as a file in the active channel by adding `"--send"` to the args.
 
 ## Occasion tags
 

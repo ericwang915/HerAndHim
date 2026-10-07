@@ -31,31 +31,34 @@ Extract and summarise content from URLs, articles, and local files.
 
 ## Usage
 
+Scripts run through the `run_skill_script` tool — pass the script path and an argv list (one item per argument, no shell quoting). Never try to run them with `run_command`.
+
 ### Summarize a URL
 
-```bash
-python {skill_path}/summarize_url.py "https://example.com/article"
+```
+run_skill_script(script="{skill_path}/summarize_url.py", args=["https://example.com/article"])
 ```
 
 ### Options
 
-```bash
+```
 # Short summary (default)
-python {skill_path}/summarize_url.py "https://example.com" --length short
+run_skill_script(script="{skill_path}/summarize_url.py", args=["https://example.com", "--length", "short"])
 
 # Detailed summary
-python {skill_path}/summarize_url.py "https://example.com" --length long
+run_skill_script(script="{skill_path}/summarize_url.py", args=["https://example.com", "--length", "long"])
 
 # Extract text only (no summarization)
-python {skill_path}/summarize_url.py "https://example.com" --extract-only
+run_skill_script(script="{skill_path}/summarize_url.py", args=["https://example.com", "--extract-only"])
 
 # JSON output
-python {skill_path}/summarize_url.py "https://example.com" --format json
+run_skill_script(script="{skill_path}/summarize_url.py", args=["https://example.com", "--format", "json"])
 ```
 
 ### Quick Alternative (curl + readability)
 
-For simple text extraction without the script:
+Only when the `run_command` shell tool is available (it is off on
+network-exposed installs) — for simple text extraction without the script:
 
 ```bash
 curl -sL "https://example.com" | python -c "
