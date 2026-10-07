@@ -71,7 +71,8 @@
     "accessToken": ""
   },
   "tools": {
-    "runCommand": "auto"
+    "runCommand": "auto",
+    "runSkillScript": "auto"
   },
   "channels": {
     "telegram": {

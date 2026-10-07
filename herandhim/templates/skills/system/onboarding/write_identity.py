@@ -4,6 +4,12 @@
 import argparse
 import os
 
+
+def _home() -> str:
+    """The install's home — HERANDHIM_HOME (set by the agent for every skill
+    subprocess; /data in Docker) or the classic ~/.herandhim."""
+    return os.environ.get("HERANDHIM_HOME") or os.path.expanduser("~/.herandhim")
+
 SOUL_TEMPLATE = """# HerAndHim — Soul
 
 You are a HerAndHim agent — an autonomous AI assistant.
@@ -174,7 +180,7 @@ def write_soul(user_name: str, personality: str, focus: str, language: str) -> s
         language=language,
         personality_description=_personality_description(personality),
     )
-    home = os.path.expanduser("~/.herandhim")
+    home = _home()
     path = os.path.join(home, "context", "soul", "SOUL.md")
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "w", encoding="utf-8") as f:
@@ -191,7 +197,7 @@ def write_persona(user_name: str, personality: str, focus: str, language: str) -
         style_notes=_style_notes(personality),
         focus_guidelines=_focus_guidelines(focus),
     )
-    home = os.path.expanduser("~/.herandhim")
+    home = _home()
     path = os.path.join(home, "context", "persona", "persona.md")
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "w", encoding="utf-8") as f:

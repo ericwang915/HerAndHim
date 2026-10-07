@@ -8,7 +8,8 @@
 #
 # Without it the container mints a random one on first boot and prints it in
 # `fly logs`. The agent's shell tool (run_command) stays off unless you also
-# set HERANDHIM_TOOLS_RUN_COMMAND=true.
+# set HERANDHIM_TOOLS_RUN_COMMAND=true; the bundled skill scripts (selfie,
+# weather, TTS, onboarding, …) run without it through run_skill_script.
 #
 # App name is global on fly.dev — change if "herandhim" is taken.
 

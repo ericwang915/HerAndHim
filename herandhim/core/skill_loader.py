@@ -14,9 +14,12 @@ in three tiers to minimise context-window usage:
   Level 2 — Core instructions  (loaded when the LLM triggers ``use_skill``)
       The body of SKILL.md: workflows, rules, step-by-step guidance.
 
-  Level 3 — Extended resources  (loaded as needed via ``read_file`` / ``run_command``)
+  Level 3 — Extended resources  (loaded as needed via ``read_file`` /
+      ``run_skill_script``)
       Scripts, schemas, reference docs, templates, CSV data — anything
-      bundled in the skill folder that SKILL.md references.
+      bundled in the skill folder that SKILL.md references.  Scripts run
+      through ``run_skill_script`` (argv list, no shell); ``run_command``
+      is only there when the operator allows a shell.
 
 SKILL.md format  (Claude-compatible)
 --------------------------------------
@@ -29,7 +32,7 @@ SKILL.md format  (Claude-compatible)
     # Calculator
 
     ## Instructions
-    Run `python {skill_path}/calc.py "expression"` ...
+    Run `run_skill_script(script="{skill_path}/calc.py", args=["expression"])` ...
 
     ## Resources
     - `calc.py` — arithmetic script

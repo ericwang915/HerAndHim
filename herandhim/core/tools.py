@@ -3,8 +3,9 @@ Built-in tool implementations and OpenAI-compatible schemas.
 
 Structure
 ---------
-  PRIMITIVE_TOOLS   — run_command / read_file / write_file / send_file / send_voice
-                      (run_command only when run_command_available() — see config.run_command_enabled)
+  PRIMITIVE_TOOLS   — run_command / run_skill_script / read_file / write_file / send_file / send_voice
+                      (run_command only when run_command_available() — see config.run_command_enabled;
+                       run_skill_script unless config.skill_script_mode() == "off")
   SKILL_TOOLS       — use_skill / list_skill_resources (always available)
   META_SKILL_TOOLS  — create_skill (always available — "god mode" skill creation)
   MEMORY_TOOLS      — remember / recall (always available)
@@ -152,19 +153,38 @@ def set_sandbox(roots: list[str]) -> None:
         _sandbox_roots.append(os.path.realpath(r))
 
 
+def _is_under(path: str, root: str) -> bool:
+    """True if real path *path* is *root* or lives beneath it."""
+    return path == root or path.startswith(root + os.sep)
+
+
+def _package_root() -> str:
+    """Real path of the installed ``herandhim`` package directory."""
+    return os.path.realpath(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+
 def _resolve_in_sandbox(path: str) -> str:
     """Resolve *path* to an absolute real path and verify it lives inside the sandbox.
 
     Returns the resolved path on success.
-    Raises ``PermissionError`` if the path escapes every sandbox root.
+    Raises ``PermissionError`` if the path escapes every sandbox root, or
+    points into the installed package itself: the bundled skill scripts are
+    what :func:`run_skill_script` trusts on a network-exposed install, so no
+    file-writing tool may touch them even when a dev checkout under ``~``
+    would otherwise fall inside the sandbox.
     """
     resolved = os.path.realpath(os.path.abspath(path))
+
+    if _is_under(resolved, _package_root()):
+        raise PermissionError(
+            f"Path '{path}' is inside the installed herandhim package; the agent never writes there."
+        )
 
     if not _sandbox_roots:
         return resolved
 
     for root in _sandbox_roots:
-        if resolved == root or resolved.startswith(root + os.sep):
+        if _is_under(resolved, root):
             return resolved
 
     raise PermissionError(
@@ -311,6 +331,185 @@ def run_command(command: str) -> str:
         return result.stdout if result.returncode == 0 else f"Error (exit {result.returncode}):\n{result.stderr}"
     except Exception as exc:
         return f"Execution error: {exc}"
+
+
+# ── run_skill_script: argv-only runner for scripts inside skill folders ──────
+#
+# After the dashboard became token-gated and ``run_command`` opt-in off
+# loopback (#58), every Docker / Fly install lost the ~16 bundled skills whose
+# SKILL.md says "python {skill_path}/x.py …".  This tool brings those back
+# without a shell: it execs exactly one file that lives inside an installed
+# skill directory, with an argv list, and nothing else.
+#
+# Trust model (see config.skill_script_mode):
+#   bundled  — scripts shipped inside the package (``herandhim/templates/
+#              skills``).  Always allowed while the tool is on: they are part
+#              of the code the operator installed, and the write tools refuse
+#              to touch the package directory.
+#   user     — scripts under this install's ``context/skills`` (what
+#              ``create_skill`` / ``write_file`` can author).  Allowed only in
+#              mode "all", i.e. while ``run_command`` itself is available
+#              (loopback, or an explicit operator opt-in).  On an exposed
+#              install they are refused, so create_skill → run_skill_script
+#              cannot be chained back into arbitrary code execution.
+
+SKILL_SCRIPT_TIMEOUT = 60
+_SKILL_SCRIPT_SUFFIXES = (".py", ".sh")
+_skill_script_roots: list[str] = []
+
+RUN_SKILL_SCRIPT_DISABLED_MSG = (
+    "Error: run_skill_script is disabled on this install "
+    "(tools.runSkillScript: false / HERANDHIM_TOOLS_RUN_SKILL_SCRIPT=false)."
+)
+RUN_SKILL_SCRIPT_UNTRUSTED_MSG = (
+    "Error: refused — this script was not shipped with HerAndHim and the "
+    "dashboard is reachable from other machines, so only bundled skill scripts "
+    "may run here. The operator can allow install-local skills with "
+    "tools.runSkillScript: true (or the full shell with tools.runCommand: true) "
+    "in herandhim.json."
+)
+
+
+def bundled_skills_dir() -> str:
+    """Real path of the skills that ship inside the package."""
+    return os.path.realpath(os.path.join(_package_root(), "templates", "skills"))
+
+
+def set_skill_script_roots(roots: list[str] | None) -> None:
+    """Register the skill directories whose scripts ``run_skill_script`` may
+    execute in mode ``"all"``.  Called by ``Agent.__init__`` with the same
+    list the :class:`SkillRegistry` scans; the bundled directory is implied."""
+    _skill_script_roots.clear()
+    for r in roots or []:
+        real = os.path.realpath(os.path.abspath(r))
+        if real not in _skill_script_roots:
+            _skill_script_roots.append(real)
+
+
+def skill_script_mode() -> str:
+    from .. import config as _cfg
+    return _cfg.skill_script_mode()
+
+
+def run_skill_script_available() -> bool:
+    """Whether ``run_skill_script`` is offered to the model and executes."""
+    return skill_script_mode() != "off"
+
+
+def _skill_dir_for(resolved: str, root: str) -> str | None:
+    """Return the skill directory (the one holding SKILL.md) that *resolved*
+    lives in, searching upward but never past *root*.  ``None`` if the file
+    is under *root* without a SKILL.md above it (e.g. a stray file next to a
+    CATEGORY.md), which is not "inside a skill"."""
+    d = os.path.dirname(resolved)
+    while _is_under(d, root) and d != root:
+        if os.path.isfile(os.path.join(d, "SKILL.md")):
+            return d
+        d = os.path.dirname(d)
+    return None
+
+
+def _resolve_skill_script(script: str) -> tuple[str, str]:
+    """Validate *script* and return ``(real_path, origin)``.
+
+    ``origin`` is ``"bundled"`` for a file inside the package's skills, or
+    ``"user"`` for one inside a registered install-local skills directory.
+    Raises ``PermissionError`` / ``FileNotFoundError`` otherwise.  Symlinks
+    are followed first, so a link planted in a user skill folder cannot smuggle
+    a file from elsewhere, and a user path that merely *looks* bundled is not.
+    """
+    if not isinstance(script, str) or not script.strip():
+        raise PermissionError("script path is required")
+    resolved = os.path.realpath(os.path.abspath(script.strip()))
+    if not resolved.endswith(_SKILL_SCRIPT_SUFFIXES):
+        raise PermissionError(
+            f"'{os.path.basename(resolved)}' is not a runnable skill script "
+            f"(expected one of {', '.join(_SKILL_SCRIPT_SUFFIXES)})"
+        )
+
+    bundled = bundled_skills_dir()
+    roots: list[tuple[str, str]] = [(bundled, "bundled")]
+    roots += [(r, "user") for r in _skill_script_roots if r != bundled]
+    for root, origin in roots:
+        if _is_under(resolved, root):
+            if not os.path.isfile(resolved):
+                raise FileNotFoundError(f"'{script}' not found")
+            if _skill_dir_for(resolved, root) is None:
+                raise PermissionError(
+                    f"'{script}' is not inside a skill directory (no SKILL.md above it)"
+                )
+            return resolved, origin
+
+    raise PermissionError(
+        f"'{script}' is outside every installed skill directory"
+    )
+
+
+def _coerce_argv(args) -> list[str]:
+    """Normalise the model-supplied ``args`` into a list of plain strings."""
+    if args is None:
+        return []
+    if isinstance(args, str):
+        # A single string is one argument — never a shell line to be split.
+        return [args]
+    if not isinstance(args, (list, tuple)):
+        raise ValueError("args must be a list of strings")
+    out: list[str] = []
+    for a in args:
+        if isinstance(a, bool):
+            out.append("true" if a else "false")
+        elif isinstance(a, (str, int, float)):
+            out.append(str(a))
+        else:
+            raise ValueError("args must be a flat list of strings")
+    for a in out:
+        if "\x00" in a:
+            raise ValueError("args may not contain NUL bytes")
+    return out
+
+
+def run_skill_script(script: str, args: list[str] | None = None) -> str:
+    """Execute one script that ships inside an installed skill directory.
+
+    ``script`` is the path SKILL.md gives (``{skill_path}/weather.py``);
+    ``args`` is the argv list — it is passed verbatim, never through a shell,
+    so quoting and metacharacters are not interpreted.  ``.py`` runs under the
+    project's Python, ``.sh`` under ``bash``.  Same environment scrubbing,
+    60-second timeout and ``context/files`` working directory as
+    :func:`run_command`.
+    """
+    mode = skill_script_mode()
+    if mode == "off":
+        logger.warning("[run_skill_script] refused (tool disabled): %s", str(script)[:120])
+        return RUN_SKILL_SCRIPT_DISABLED_MSG
+
+    try:
+        resolved, origin = _resolve_skill_script(script)
+        argv = _coerce_argv(args)
+    except (PermissionError, FileNotFoundError, ValueError) as exc:
+        logger.warning("[run_skill_script] %s — refused: %s", str(script)[:120], exc)
+        return f"Error: {exc}"
+
+    if origin != "bundled" and mode != "all":
+        logger.warning("[run_skill_script] %s — refused: install-local script on an exposed install", resolved)
+        return RUN_SKILL_SCRIPT_UNTRUSTED_MSG
+
+    interpreter = ["bash"] if resolved.endswith(".sh") else [_venv_python()]
+    try:
+        result = subprocess.run(
+            [*interpreter, resolved, *argv], shell=False,
+            capture_output=True, text=True,
+            timeout=SKILL_SCRIPT_TIMEOUT, env=_venv_env(), cwd=_files_dir(),
+        )
+    except subprocess.TimeoutExpired:
+        return f"Error: script timed out after {SKILL_SCRIPT_TIMEOUT}s"
+    except Exception as exc:
+        return f"Execution error: {exc}"
+
+    if result.returncode == 0:
+        return result.stdout
+    detail = result.stderr.strip() or result.stdout.strip()
+    return f"Error (exit {result.returncode}):\n{detail}"
 
 
 _SYSTEM_PATH_PREFIXES = (
@@ -533,6 +732,7 @@ def _tool_candid_shot(category: str = "random", hint: str = "",
 
 AVAILABLE_TOOLS: dict[str, callable] = {
     "run_command": run_command,
+    "run_skill_script": run_skill_script,
     "read_file": read_file,
     "write_file": write_file,
     "send_file": send_file,
@@ -571,6 +771,26 @@ PRIMITIVE_TOOLS: list[dict] = [
         "Execute a shell command. Use to run scripts, install packages, or perform system operations.",
         {"command": {"type": "string", "description": "The shell command to execute."}},
         ["command"],
+    ),
+    _fn(
+        "run_skill_script",
+        "Run a script that belongs to an installed skill (the `{skill_path}/xxx.py` files a SKILL.md "
+        "tells you to run). This is NOT a shell: pass the script path and its arguments as a list — "
+        "each list item is one argv entry, exactly as written, with no quoting or expansion. "
+        "Only files inside skill directories can run; use it instead of run_command for skill scripts.",
+        {
+            "script": {
+                "type": "string",
+                "description": "Path to the script inside the skill folder, e.g. the `{skill_path}/weather.py` from SKILL.md.",
+            },
+            "args": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Argument list, one entry per argv item, e.g. [\"Tokyo\", \"--forecast\", \"3\"]. Omit for none.",
+                "default": [],
+            },
+        },
+        ["script"],
     ),
     _fn(
         "read_file",
@@ -640,7 +860,7 @@ PRIMITIVE_TOOLS: list[dict] = [
 
 # ── Skill tool schemas ───────────────────────────────────────────────────────
 # Level 2: Agent triggers a skill to load its full instructions into context.
-# Level 3: Agent reads/runs bundled resources via read_file / run_command.
+# Level 3: Agent reads bundled resources via read_file and runs scripts via run_skill_script.
 
 SKILL_TOOLS: list[dict] = [
     _fn(
@@ -1123,6 +1343,13 @@ def create_skill(
     if dep_results:
         parts.append("Dependencies:\n" + "\n".join(dep_results))
     parts.append("Registry will be refreshed — the skill is now available via use_skill().")
+    if any(f.endswith(_SKILL_SCRIPT_SUFFIXES) for f in written_files) and skill_script_mode() != "all":
+        parts.append(
+            "Note: this install's dashboard is reachable from other machines, so "
+            "run_skill_script only executes scripts that ship with HerAndHim — the "
+            "scripts in this new skill will NOT run until the operator sets "
+            "tools.runSkillScript: true (or tools.runCommand: true). Tell the user plainly."
+        )
 
     return "\n".join(parts)
 

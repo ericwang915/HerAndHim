@@ -289,6 +289,42 @@ def run_command_enabled() -> bool:
     return web_is_loopback()
 
 
+SKILL_SCRIPT_MODES = ("off", "bundled", "all")
+
+
+def skill_script_mode() -> str:
+    """How far the ``run_skill_script`` tool may reach.
+
+    ``tools.runSkillScript`` / ``HERANDHIM_TOOLS_RUN_SKILL_SCRIPT``:
+      "auto"     (default) ``"all"`` while :func:`run_command_enabled` is true
+                 (loopback, or the operator opted into the shell), otherwise
+                 ``"bundled"``.
+      "bundled"  only the scripts that ship inside the package.
+      true/"all" bundled scripts plus anything under the install's own
+                 ``context/skills`` (``create_skill`` output) — an explicit
+                 operator opt-in on an exposed install.
+      false      the tool is withheld and refuses.
+
+    Unlike ``run_command`` there is no shell behind this tool: it only ever
+    execs ``python``/``bash`` on a file inside a skill directory with an argv
+    list, so ``"bundled"`` is safe to leave on for Docker and Fly installs
+    that are reachable from other machines.
+    """
+    raw = get("tools", "runSkillScript", env="HERANDHIM_TOOLS_RUN_SKILL_SCRIPT", default="auto")
+    if raw is True:
+        return "all"
+    if raw is False:
+        return "off"
+    val = str(raw).strip().lower()
+    if val in ("1", "true", "yes", "on", "always", "all"):
+        return "all"
+    if val in ("0", "false", "no", "off", "never"):
+        return "off"
+    if val == "bundled":
+        return "bundled"
+    return "all" if run_command_enabled() else "bundled"
+
+
 def group_context_dir(session_id: str) -> Path:
     """Return the per-group context directory for *session_id* (per-tenant).
 

@@ -31,9 +31,13 @@ Install dependency: `pip install deep-translator`
 
 ## Usage/Commands
 
-```bash
-python {skill_path}/translate.py "text to translate" --to TARGET_LANG [options]
 ```
+run_skill_script(script="{skill_path}/translate.py", args=["text to translate", "--to", "TARGET_LANG"])
+run_skill_script(script="{skill_path}/translate.py", args=["Bonjour le monde", "--to", "zh-CN", "--from", "fr", "--format", "json"])
+```
+
+Run it with the `run_skill_script` tool — the text is one list item, each
+option flag and its value are separate items.
 
 | Option | Description |
 |--------|-------------|

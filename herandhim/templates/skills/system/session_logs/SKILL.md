@@ -36,6 +36,10 @@ conversation transcript.
 
 ## Commands
 
+The bundled script runs through `run_skill_script`. The `ls` / `grep` / `cat`
+alternatives below need the `run_command` shell tool, which is off on
+network-exposed installs — prefer the script.
+
 ### List all sessions by date and size
 
 ```bash
@@ -44,8 +48,8 @@ ls -lhS ~/.herandhim/context/sessions/*.md
 
 ### Search across ALL sessions for a keyword
 
-```bash
-python {skill_path}/search_sessions.py "keyword"
+```
+run_skill_script(script="{skill_path}/search_sessions.py", args=["keyword"])
 ```
 
 Or with grep:

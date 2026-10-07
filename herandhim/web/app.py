@@ -693,11 +693,15 @@ async def _api_identity():
         ("Memory", MEMORY_TOOLS),
         ("Cron", CRON_TOOLS),
     ]
-    run_command_on = config.run_command_enabled()
+    withheld: set[str] = set()
+    if not config.run_command_enabled():
+        withheld.add("run_command")
+    if config.skill_script_mode() == "off":
+        withheld.add("run_skill_script")
     for group, schemas in tool_groups:
         for s in schemas:
             info = _tool_info(s)
-            if info["name"] == "run_command" and not run_command_on:
+            if info["name"] in withheld:
                 continue
             info["group"] = group
             tools.append(info)

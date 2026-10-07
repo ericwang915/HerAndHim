@@ -84,10 +84,14 @@ The rules, in order of exposure:
   Long and random. The browser asks for it once and keeps an HttpOnly cookie;
   scripts send `Authorization: Bearer <token>`.
 - **Shell tool** — `run_command` is off by default whenever the dashboard is
-  not loopback-only (that includes every Docker install). Skills that execute
-  a script (weather, horoscope, news, local TTS…) need it. Opt in with
-  `HERANDHIM_TOOLS_RUN_COMMAND=true` / `"tools": {"runCommand": true}` once
-  the token is set.
+  not loopback-only (that includes every Docker install). The bundled skills
+  that execute a script (selfie, weather, horoscope, news, TTS, onboarding…)
+  do not need it: they run through `run_skill_script`, which only executes
+  the scripts shipped inside the image, with an argv list and no shell.
+  Skills the agent creates for itself are not runnable here unless you allow
+  them with `HERANDHIM_TOOLS_RUN_SKILL_SCRIPT=true`. Opt into the full shell
+  with `HERANDHIM_TOOLS_RUN_COMMAND=true` / `"tools": {"runCommand": true}`
+  once the token is set.
 - **Publishing to the LAN** — change `127.0.0.1:7788:7788` to `7788:7788`
   only after setting a token, and prefer HTTPS (a reverse proxy or Fly's
   `force_https`) so the token isn't sent in the clear. An SSH tunnel or VPN

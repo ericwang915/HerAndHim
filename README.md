@@ -339,7 +339,10 @@ All runtime data lives under `~/.herandhim/`:
     "host": "127.0.0.1", "port": 7788,     // loopback only by default
     "accessToken": ""                      // required for any other host — see "Exposing the dashboard"
   },
-  "tools": { "runCommand": "auto" },       // agent shell: on for loopback, off when exposed
+  "tools": {
+    "runCommand": "auto",                  // agent shell: on for loopback, off when exposed
+    "runSkillScript": "auto"               // bundled skill scripts always; own skills only with the shell
+  },
   "agent": {
     "autoCompactThreshold": 0,             // auto-compaction token threshold (0 = default 10000)
     "verbose": false
@@ -683,11 +686,17 @@ HttpOnly cookie) or send `Authorization: Bearer <token>` from scripts. Make
 it long and random — `openssl rand -base64 32` is fine.
 
 The agent's shell tool (`run_command`) is **off by default whenever the
-dashboard isn't loopback-only**, including in Docker. Skills that run a
-script (weather, horoscope, news, local TTS…) need it; turn it back on with
-`"tools": { "runCommand": true }` or `HERANDHIM_TOOLS_RUN_COMMAND=true` once
-the token is in place. The command denylist in `core/tools.py` is defence in
-depth, not a substitute for authentication.
+dashboard isn't loopback-only**, including in Docker. The bundled skills
+that run a script (selfie, weather, horoscope, news, TTS, onboarding…) keep
+working without it: they go through `run_skill_script`, which can only
+execute the scripts that ship inside the package — no shell, arguments as a
+plain argv list. Skills the agent writes for itself with `create_skill` are
+**not** runnable on an exposed install until you allow them
+(`"tools": { "runSkillScript": true }` / `HERANDHIM_TOOLS_RUN_SKILL_SCRIPT=true`),
+and the full shell stays opt-in (`"tools": { "runCommand": true }` /
+`HERANDHIM_TOOLS_RUN_COMMAND=true`) once the token is in place. The command
+denylist in `core/tools.py` is defence in depth, not a substitute for
+authentication.
 
 📄 **[SAFETY.md](SAFETY.md)** — the full crisis protocol, content limits, and
 anti-dark-pattern design decisions.

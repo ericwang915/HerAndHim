@@ -241,7 +241,7 @@ HerAndHim 是**面向成年人（18+）的关系模拟引擎** —— 一个情�
 
 自托管意味着你就是运营者：所在地关于 AI 聊天服务、数据保护、年龄限制的法律由你负责。
 
-**面板的网络暴露。** 面板就是智能体的控制台：能打开它的人可以以你的身份聊天、读她的记忆、改配置，（开启时）还能执行 shell 命令。因此它**默认只监听本机**（`web.host` 为 `127.0.0.1`），Docker 的端口也只发布到 `127.0.0.1`。一旦不是仅本机 —— `0.0.0.0`、Fly.io、局域网/VPS —— 就**必须**设置访问令牌 `web.accessToken` / `HERANDHIM_WEB_ACCESS_TOKEN`，否则拒绝启动；Docker 容器内部监听 `0.0.0.0`，所以始终强制令牌（未设置时首次启动会随机生成一个并打印到日志）。智能体的 shell 工具 `run_command` 在非本机监听时**默认关闭**（含 Docker），需要运行脚本类技能时用 `"tools": { "runCommand": true }` 或 `HERANDHIM_TOOLS_RUN_COMMAND=true` 显式开启。
+**面板的网络暴露。** 面板就是智能体的控制台：能打开它的人可以以你的身份聊天、读她的记忆、改配置，（开启时）还能执行 shell 命令。因此它**默认只监听本机**（`web.host` 为 `127.0.0.1`），Docker 的端口也只发布到 `127.0.0.1`。一旦不是仅本机 —— `0.0.0.0`、Fly.io、局域网/VPS —— 就**必须**设置访问令牌 `web.accessToken` / `HERANDHIM_WEB_ACCESS_TOKEN`，否则拒绝启动；Docker 容器内部监听 `0.0.0.0`，所以始终强制令牌（未设置时首次启动会随机生成一个并打印到日志）。智能体的 shell 工具 `run_command` 在非本机监听时**默认关闭**（含 Docker）。内置的脚本类技能（自拍、天气、黄历、新闻、语音、初始化向导……）不需要它：它们通过 `run_skill_script` 运行，该工具只能执行随包附带的脚本，没有 shell，参数以 argv 列表原样传入。智能体用 `create_skill` 自己写的技能在对外暴露的安装上**不会**被执行，除非你显式允许（`"tools": { "runSkillScript": true }` / `HERANDHIM_TOOLS_RUN_SKILL_SCRIPT=true`）；完整 shell 仍需在设好令牌后用 `"tools": { "runCommand": true }` 或 `HERANDHIM_TOOLS_RUN_COMMAND=true` 显式开启。
 
 📄 **[SAFETY.md](SAFETY.md)** —— 完整的危机协议、内容红线与反暗黑模式设计
 🔒 **[SECURITY.md](SECURITY.md)** —— 加固建议与漏洞报告
