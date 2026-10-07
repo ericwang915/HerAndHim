@@ -689,15 +689,26 @@ script (weather, horoscope, news, local TTS…) need it; turn it back on with
 the token is in place. The command denylist in `core/tools.py` is defence in
 depth, not a substitute for authentication.
 
+**Upgrading from 0.2.0 or earlier?** Older versions bound the dashboard to
+`0.0.0.0` with no authentication, and `herandhim onboard` wrote
+`"web": { "host": "0.0.0.0" }` into `~/.herandhim/herandhim.json`. After
+upgrading, `herandhim start` will **refuse to start** with that config until
+you either change `web.host` to `127.0.0.1` (recommended) or keep the open
+bind and set `web.accessToken`. Docker users: replace `7788:7788` with
+`127.0.0.1:7788:7788` in your `docker run` / compose file — the old mapping
+published the dashboard on every interface of the host. Details in
+[CHANGELOG.md](CHANGELOG.md).
+
 📄 **[SAFETY.md](SAFETY.md)** — the full crisis protocol, content limits, and
 anti-dark-pattern design decisions.
 🔒 **[SECURITY.md](SECURITY.md)** — hardening notes and vulnerability reporting.
 
 ### Status
 
-**v0.2.0 — early but real.** Runs daily on the maintainer's own machine. The
+**v0.3.0 — early but real.** Runs daily on the maintainer's own machine. The
 companion engine (memory, daily life, photos, humanized delivery) is stable;
 the web dashboard is functional but plain. Expect rough edges in setup.
+Release history: [CHANGELOG.md](CHANGELOG.md).
 
 Roadmap: richer local-model UX · realtime voice calls · a desktop
 avatar mode · more languages. Ideas and issues welcome.
